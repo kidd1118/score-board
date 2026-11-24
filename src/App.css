@@ -278,3 +278,301 @@ body {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ---------- tabs ---------- */
+.tabs {
+  display: flex;
+  gap: 4px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 12px 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs a {
+  padding: 8px 16px;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.tabs a.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* ---------- players ---------- */
+.players-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 20px;
+  align-items: start;
+}
+
+.player-list {
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  position: sticky;
+  top: 12px;
+}
+
+.player-list input[type='search'] {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.player-list .toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.player-list .meta {
+  margin: 8px 0 4px;
+}
+
+.player-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 65vh;
+  overflow-y: auto;
+}
+
+.player-list li button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.player-list li button:hover {
+  background: var(--bg);
+}
+
+.player-list li button.selected {
+  background: var(--accent);
+  color: #fff;
+}
+
+.player-list li small {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+.player-profile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  min-width: 0;
+}
+
+.player-profile h3 {
+  font-size: 1rem;
+  margin: 24px 0 10px;
+}
+
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.profile-head img {
+  width: 130px;
+  height: 95px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.profile-head h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.profile-head .meta {
+  margin: 4px 0 0;
+}
+
+.bio {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px 16px;
+  margin: 16px 0 0;
+}
+
+.bio dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.bio dd {
+  margin: 2px 0 0;
+  font-size: 0.9rem;
+}
+
+.summary.career {
+  grid-template-columns: repeat(5, 1fr);
+  margin-top: 0;
+}
+
+.summary.career .stat {
+  cursor: default;
+}
+
+.chart-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.chart-head h3 {
+  margin: 0;
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.segmented button {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border: none;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.segmented button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.season-chart {
+  position: relative;
+  margin-top: 10px;
+}
+
+.season-chart svg {
+  display: block;
+}
+
+.season-chart .grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.season-chart .axis {
+  fill: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.season-chart .hit {
+  fill: transparent;
+}
+
+.season-chart .bar {
+  fill: var(--accent);
+  transition: opacity 0.15s;
+}
+
+.season-chart .bar.dim {
+  opacity: 0.45;
+}
+
+.chart-tooltip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  background: var(--text);
+  color: var(--surface);
+  font-size: 0.75rem;
+  padding: 6px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.season-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.season-table th,
+.season-table td {
+  padding: 6px 8px;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.season-table th:nth-child(-n + 2),
+.season-table td:nth-child(-n + 2) {
+  text-align: left;
+}
+
+.season-table th {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.season-table tr.tot td {
+  font-weight: 600;
+}
+
+@media (max-width: 800px) {
+  .players-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .player-list {
+    position: static;
+  }
+
+  .player-list ul {
+    max-height: 240px;
+  }
+
+  .summary.career {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

@@ -24,11 +24,22 @@ def get_team(name: str):
     team = nba_teams.get_team(name)
     return team
 
+# active: true = current players only, false = retired only, omit = all
 @app.get("/player/")
-def get_players():
-    players = nba_players.get_players()
+def get_players(active: Union[bool, None] = None):
+    players = nba_players.get_players(active)
     return {"players": players}
-    
+
+@app.get("/player/{player_id}/profile")
+def get_player_profile(player_id: int):
+    try:
+        profile = nba_players.get_player_profile(player_id)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"NBA API request failed: {e}")
+    if profile is None:
+        raise HTTPException(status_code=404, detail="player not found")
+    return profile
+
 @app.get("/player/{name}")
 def get_player(name: str):
     players = nba_players.get_player(name)
