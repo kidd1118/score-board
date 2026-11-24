@@ -1,10 +1,13 @@
 import datetime as dt
 
 from fastapi import FastAPI, HTTPException
-from typing import Union
+from typing import Dict, Optional, Union
+
+from pydantic import BaseModel
 import nba_teams
 import nba_players
 import nba_games
+import nba_fantasy
 
 app = FastAPI()
 
@@ -79,3 +82,51 @@ def get_games(date: Union[str, None] = None):
         return nba_games.get_games(date)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"NBA API request failed: {e}")
+
+
+def _check_date(date: str) -> str:
+    try:
+        return dt.date.fromisoformat(date).isoformat()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="date must be YYYY-MM-DD")
+
+
+class LineupIn(BaseModel):
+    # slot (PG, SG, SF, PF, C, 6TH) -> player id, or null to leave empty
+    slots: Dict[str, Optional[int]]
+
+
+# must be declared before /fantasy/{date}
+@app.get("/fantasy/history")
+def get_fantasy_history():
+    try:
+        return nba_fantasy.get_history()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"NBA API request failed: {e}")
+
+@app.get("/fantasy/{date}/pool")
+def get_fantasy_pool(date: str):
+    date = _check_date(date)
+    try:
+        return nba_fantasy.get_pool(date)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"NBA API request failed: {e}")
+
+@app.get("/fantasy/{date}")
+def get_fantasy_lineup(date: str):
+    date = _check_date(date)
+    try:
+        return nba_fantasy.get_lineup(date)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"NBA API request failed: {e}")
+
+@app.put("/fantasy/{date}")
+def save_fantasy_lineup(date: str, lineup: LineupIn):
+    date = _check_date(date)
+    try:
+        return nba_fantasy.save_lineup(date, lineup.slots)
+    except nba_fantasy.LineupError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"NBA API request failed: {e}")
+

@@ -28,3 +28,6 @@ __pycache__/
 
 # editor
 .vscode/settings.json
+
+# fantasy game saves
+src/api/data/

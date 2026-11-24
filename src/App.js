@@ -3,15 +3,18 @@ import './App.css';
 import GamesDashboard from './GamesDashboard';
 import PlayersDashboard from './PlayersDashboard';
 import TeamsDashboard from './TeamsDashboard';
+import FantasyDashboard from './FantasyDashboard';
 
 const PAGES = [
   { key: 'games', label: '比賽' },
   { key: 'teams', label: '球隊' },
   { key: 'players', label: '球員' },
+  { key: 'fantasy', label: '小遊戲' },
 ];
 
 // Routes live in the URL hash so a refresh keeps the current view:
-// #/games, #/games/<date>, #/teams, #/teams/<teamId>, #/players, #/players/<playerId>
+// #/games, #/games/<date>, #/teams, #/teams/<teamId>, #/players, #/players/<playerId>,
+// #/fantasy, #/fantasy/<date>
 function parseHash() {
   const [, page, param] = window.location.hash.split('/');
   return {
@@ -49,6 +52,12 @@ function App() {
         />
       )}
       {route.page === 'teams' && <TeamsDashboard selectedId={route.id} />}
+      {route.page === 'fantasy' && (
+        <FantasyDashboard
+          date={route.date}
+          onDateChange={(d) => (window.location.hash = d ? `#/fantasy/${d}` : '#/fantasy')}
+        />
+      )}
       {route.page === 'players' && (
         <PlayersDashboard
           selectedId={route.id}

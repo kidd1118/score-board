@@ -4,13 +4,14 @@ Today's games come from the live scoreboard (real-time scores, clock, leaders).
 Any other date comes from the stats ScoreboardV2 endpoint.
 """
 import re
-import time
 from datetime import date as date_cls, datetime, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
 
 from nba_api.live.nba.endpoints import scoreboard
 from nba_api.stats.endpoints import scoreboardv2
+
+from cache import cached
 
 REQUEST_TIMEOUT = 15
 EASTERN = ZoneInfo("America/New_York")
@@ -19,27 +20,6 @@ EASTERN = ZoneInfo("America/New_York")
 LIVE_TTL = 15
 UNFINISHED_DAY_TTL = 60
 FINISHED_DAY_TTL = 6 * 60 * 60
-_cache = {}
-
-
-def _cached(key, ttl_for, fetch):
-    hit = _cache.get(key)
-    if hit and hit[0] > time.monotonic():
-        return hit[1]
-    value = _with_retry(fetch)
-    _cache[key] = (time.monotonic() + ttl_for(value), value)
-    return value
-
-
-def _with_retry(fetch, attempts=2):
-    """NBA servers occasionally answer with an empty or non-JSON body; one retry usually fixes it."""
-    for attempt in range(attempts):
-        try:
-            return fetch()
-        except Exception:
-            if attempt == attempts - 1:
-                raise
-            time.sleep(0.5)
 
 
 def _day_ttl(result):
@@ -138,7 +118,7 @@ def _stats_team(line):
 
 
 def get_live_games():
-    return _cached("live", lambda _: LIVE_TTL, _fetch_live_games)
+    return cached("live", lambda _: LIVE_TTL, _fetch_live_games)
 
 
 def _fetch_games_by_date(game_date: str):
@@ -166,7 +146,7 @@ def _fetch_games_by_date(game_date: str):
 
 
 def get_games_by_date(game_date: str):
-    return _cached(("date", game_date), _day_ttl, lambda: _fetch_games_by_date(game_date))
+    return cached(("date", game_date), _day_ttl, lambda: _fetch_games_by_date(game_date))
 
 
 def get_games(game_date: Optional[str] = None):
