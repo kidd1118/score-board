@@ -1,7 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from typing import Union
 import nba_teams
 import nba_players
+import nba_games
 
 app = FastAPI()
 
@@ -32,3 +33,13 @@ def get_players():
 def get_player(name: str):
     players = nba_players.get_player(name)
     return {"players": players}
+
+# date format: YYYY-MM-DD; omit for today's live scoreboard
+@app.get("/games/")
+def get_games(date: Union[str, None] = None):
+    try:
+        return nba_games.get_games(date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="date must be YYYY-MM-DD")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"NBA API request failed: {e}")
