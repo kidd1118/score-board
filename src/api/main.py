@@ -18,10 +18,30 @@ def read_item(item_id: int, q: Union[str, None] = None):
 def get_teams():
     return nba_teams.get_teams()
 
+# must be declared before /team/{name}, or "standings" is treated as a team name
+@app.get("/team/standings")
+def get_standings():
+    try:
+        return nba_teams.get_standings()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"NBA API request failed: {e}")
+
+@app.get("/team/{team_id}/profile")
+def get_team_profile(team_id: int):
+    try:
+        profile = nba_teams.get_team_profile(team_id)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"NBA API request failed: {e}")
+    if profile is None:
+        raise HTTPException(status_code=404, detail="team not found")
+    return profile
+
 # team name: BOS
 @app.get("/team/{name}")
 def get_team(name: str):
     team = nba_teams.get_team(name)
+    if team is None:
+        raise HTTPException(status_code=404, detail="team not found")
     return team
 
 # active: true = current players only, false = retired only, omit = all

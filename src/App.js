@@ -2,19 +2,32 @@ import { useEffect, useState } from 'react';
 import './App.css';
 import GamesDashboard from './GamesDashboard';
 import PlayersDashboard from './PlayersDashboard';
+import TeamsDashboard from './TeamsDashboard';
+
+const PAGES = [
+  { key: 'games', label: '比賽' },
+  { key: 'teams', label: '球隊' },
+  { key: 'players', label: '球員' },
+];
 
 // Routes live in the URL hash so a refresh keeps the current view:
-// #/games, #/players, #/players/<playerId>
+// #/games, #/teams, #/teams/<teamId>, #/players, #/players/<playerId>
 function parseHash() {
-  const [, page = 'games', id] = window.location.hash.split('/');
-  return { page: page === 'players' ? 'players' : 'games', playerId: id ? Number(id) : null };
+  const [, page, id] = window.location.hash.split('/');
+  return {
+    page: PAGES.some((p) => p.key === page) ? page : 'games',
+    id: id ? Number(id) : null,
+  };
 }
 
 function App() {
   const [route, setRoute] = useState(parseHash);
 
   useEffect(() => {
-    const onHash = () => setRoute(parseHash());
+    const onHash = () => {
+      setRoute(parseHash());
+      window.scrollTo(0, 0);
+    };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
@@ -22,14 +35,17 @@ function App() {
   return (
     <>
       <nav className="tabs">
-        <a href="#/games" className={route.page === 'games' ? 'active' : ''}>比賽</a>
-        <a href="#/players" className={route.page === 'players' ? 'active' : ''}>球員</a>
+        {PAGES.map((p) => (
+          <a key={p.key} href={`#/${p.key}`} className={route.page === p.key ? 'active' : ''}>
+            {p.label}
+          </a>
+        ))}
       </nav>
-      {route.page === 'games' ? (
-        <GamesDashboard />
-      ) : (
+      {route.page === 'games' && <GamesDashboard />}
+      {route.page === 'teams' && <TeamsDashboard selectedId={route.id} />}
+      {route.page === 'players' && (
         <PlayersDashboard
-          selectedId={route.playerId}
+          selectedId={route.id}
           onSelect={(id) => (window.location.hash = `#/players/${id}`)}
         />
       )}

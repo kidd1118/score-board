@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 const HEIGHT = 220;
 const PAD = { top: 16, right: 8, bottom: 28, left: 36 };
 
-function niceMax(value) {
+export function niceMax(value) {
   if (value <= 0) return 1;
   const step = 10 ** Math.floor(Math.log10(value));
   for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) {
@@ -13,7 +13,7 @@ function niceMax(value) {
 }
 
 // Rounded top corners (4px), flat on the baseline.
-function barPath(x, y, w, h) {
+export function barPath(x, y, w, h) {
   const r = Math.min(4, w / 2, h);
   return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
 }

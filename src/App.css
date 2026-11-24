@@ -8,6 +8,8 @@
   --live: #c8102e;
   --final: #4b5563;
   --scheduled: #1d428a;
+  --win: #2f63c6;
+  --loss: #d9480f;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -21,6 +23,8 @@
     --live: #ff5a6e;
     --final: #9aa0a6;
     --scheduled: #7aa2ff;
+    --win: #5b8def;
+    --loss: #d9622a;
   }
 }
 
@@ -575,4 +579,143 @@ body {
   .summary.career {
     grid-template-columns: repeat(3, 1fr);
   }
+}
+
+/* ---------- teams ---------- */
+.back-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.teams-body {
+  margin-top: 12px;
+}
+
+.standings {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 4px 16px 12px;
+  margin-bottom: 20px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table th,
+.data-table td {
+  padding: 7px 8px;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.data-table th {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.data-table th:nth-child(2),
+.data-table td:nth-child(2) {
+  text-align: left;
+}
+
+.data-table a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.data-table a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.standings tbody tr {
+  cursor: pointer;
+}
+
+.standings tbody tr:hover {
+  background: var(--bg);
+}
+
+.standings tr.cutoff td {
+  border-bottom: 2px solid var(--muted);
+}
+
+.team-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.team-logo {
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.team-profile .profile-head img {
+  width: 80px;
+  height: 80px;
+  background: none;
+  border-radius: 0;
+  object-fit: contain;
+}
+
+.summary.team-ranks {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.season-chart .bar.win {
+  fill: var(--win);
+}
+
+.season-chart .bar.loss {
+  fill: var(--loss);
+}
+
+.season-chart .baseline {
+  stroke: var(--muted);
+  stroke-width: 1;
+}
+
+.legend {
+  display: inline-flex;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.swatch.win {
+  background: var(--win);
+}
+
+.swatch.loss {
+  background: var(--loss);
+}
+
+@media (max-width: 600px) {
+  .summary.team-ranks {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.games-table th:nth-child(-n + 3),
+.games-table td:nth-child(-n + 3) {
+  text-align: left;
 }
