@@ -1,70 +1,80 @@
-# Getting Started with Create React App
+# NBA Score Board
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+NBA 資料儀表板，包含三個頁面：
 
-## Available Scripts
+- **比賽**：今日即時比分（進行中的比賽每 30 秒自動更新），也可查詢任意日期的賽果
+- **球隊**：東西區戰績榜，以及各隊的本季數據排名、每場得失分差、近期賽果與球員名單
+- **球員**：搜尋球員，查看基本資料、生涯平均與逐季數據
 
-In the project directory, you can run:
+前端是 React（Create React App），後端是 FastAPI，資料來自 [nba_api](https://github.com/swar/nba_api)。
 
-### `npm start`
+## 需求
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- Python 3.10 以上
+- Node.js 18 以上
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## 啟動
 
-### `npm test`
+前後端要各開一個終端機同時執行。
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### 1. 後端（FastAPI，port 8000）
 
-### `npm run build`
+第一次執行先建立虛擬環境並安裝套件：
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+啟動：
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```bash
+cd src/api
+../../.venv/bin/uvicorn main:app --reload --port 8000
+```
 
-### `npm run eject`
+啟動後可以打開 <http://localhost:8000/docs> 查看與測試所有 API。
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+> 用 VS Code 的話，先把 Python 直譯器選成 `.venv/bin/python`，再用「Run and Debug」裡的 **Python Debugger: FastAPI** 啟動，效果相同。
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### 2. 前端（React，port 3000）
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+第一次執行先安裝套件：
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```bash
+npm install
+```
 
-## Learn More
+啟動：
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```bash
+npm start
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+打開 <http://localhost:3000>。前端對 API 的請求會透過 `package.json` 裡的 `proxy` 轉到 `http://localhost:8000`，所以**後端必須先啟動**，否則頁面會顯示無法取得資料。
 
-### Code Splitting
+## API
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+| 路徑 | 說明 |
+| --- | --- |
+| `GET /games/` | 今日比賽（即時比分） |
+| `GET /games/?date=YYYY-MM-DD` | 指定日期的比賽 |
+| `GET /team/standings` | 本季東西區戰績 |
+| `GET /team/{team_id}/profile` | 球隊資料、數據排名、賽果與球員名單 |
+| `GET /team/{abbr}` | 以縮寫查詢球隊，例如 `BOS` |
+| `GET /player/?active=true` | 球員名單（`active` 省略則包含退役球員） |
+| `GET /player/{player_id}/profile` | 球員資料與逐季數據 |
+| `GET /player/{name}` | 以全名搜尋球員 |
 
-### Analyzing the Bundle Size
+## 測試與建置
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+```bash
+npm test          # 前端測試（watch 模式；加上 CI=true 只跑一次）
+npm run build     # 建置正式版到 build/
+```
 
-### Making a Progressive Web App
+## 常見問題
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- **頁面顯示「無法取得…資料」、終端機出現 `Proxy error ... ECONNREFUSED`**：後端沒有啟動，照上面步驟啟動後端後重新整理。
+- **後端回傳 502 `NBA API request failed`**：NBA 官方網站連線失敗或逾時。NBA 會封鎖部分網路（例如雲端主機、某些 VPN），請換個網路再試。
+- **球員大頭照或球隊 logo 沒顯示**：圖片直接從 NBA 的 CDN 載入，被封鎖時會自動隱藏，不影響其他資料。
