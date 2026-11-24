@@ -11,12 +11,13 @@ const PAGES = [
 ];
 
 // Routes live in the URL hash so a refresh keeps the current view:
-// #/games, #/teams, #/teams/<teamId>, #/players, #/players/<playerId>
+// #/games, #/games/<date>, #/teams, #/teams/<teamId>, #/players, #/players/<playerId>
 function parseHash() {
-  const [, page, id] = window.location.hash.split('/');
+  const [, page, param] = window.location.hash.split('/');
   return {
     page: PAGES.some((p) => p.key === page) ? page : 'games',
-    id: id ? Number(id) : null,
+    id: param && /^\d+$/.test(param) ? Number(param) : null,
+    date: param && /^\d{4}-\d{2}-\d{2}$/.test(param) ? param : null,
   };
 }
 
@@ -41,7 +42,12 @@ function App() {
           </a>
         ))}
       </nav>
-      {route.page === 'games' && <GamesDashboard />}
+      {route.page === 'games' && (
+        <GamesDashboard
+          date={route.date}
+          onDateChange={(d) => (window.location.hash = d ? `#/games/${d}` : '#/games')}
+        />
+      )}
       {route.page === 'teams' && <TeamsDashboard selectedId={route.id} />}
       {route.page === 'players' && (
         <PlayersDashboard

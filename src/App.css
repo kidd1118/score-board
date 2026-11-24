@@ -8,6 +8,7 @@
   --live: #c8102e;
   --final: #4b5563;
   --scheduled: #1d428a;
+  --on-accent: #ffffff;
   --win: #2f63c6;
   --loss: #d9480f;
 }
@@ -23,6 +24,7 @@
     --live: #ff5a6e;
     --final: #9aa0a6;
     --scheduled: #7aa2ff;
+    --on-accent: #0b1530;
     --win: #5b8def;
     --loss: #d9622a;
   }
@@ -380,7 +382,7 @@ body {
 
 .player-list li button.selected {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .player-list li small {
@@ -482,7 +484,7 @@ body {
 
 .segmented button.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .season-chart {
@@ -718,4 +720,71 @@ body {
 .games-table th:nth-child(-n + 3),
 .games-table td:nth-child(-n + 3) {
   text-align: left;
+}
+
+/* ---------- date strip ---------- */
+.date-strip {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.date-strip button {
+  font: inherit;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.date-strip .day {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+}
+
+.date-strip .day:hover {
+  border-color: var(--accent);
+}
+
+.date-strip .day.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.date-strip .day-week {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.date-strip .day-date {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.date-strip .strip-arrow {
+  padding: 0 12px;
+  font-size: 1.1rem;
+}
+
+@media (max-width: 600px) {
+  .date-strip {
+    gap: 4px;
+  }
+
+  .date-strip .day:nth-child(2),
+  .date-strip .day:nth-last-child(2) {
+    display: none;
+  }
+
+  .date-strip .strip-arrow {
+    padding: 0 8px;
+  }
 }

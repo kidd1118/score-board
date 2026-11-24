@@ -4,13 +4,62 @@ Today's games come from the live scoreboard (real-time scores, clock, leaders).
 Any other date comes from the stats ScoreboardV2 endpoint.
 """
 import re
-from datetime import date as date_cls
+import time
+from datetime import date as date_cls, datetime, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from nba_api.live.nba.endpoints import scoreboard
 from nba_api.stats.endpoints import scoreboardv2
 
 REQUEST_TIMEOUT = 15
+EASTERN = ZoneInfo("America/New_York")
+
+# Cache TTLs (seconds). A day whose games are all final never changes.
+LIVE_TTL = 15
+UNFINISHED_DAY_TTL = 60
+FINISHED_DAY_TTL = 6 * 60 * 60
+_cache = {}
+
+
+def _cached(key, ttl_for, fetch):
+    hit = _cache.get(key)
+    if hit and hit[0] > time.monotonic():
+        return hit[1]
+    value = _with_retry(fetch)
+    _cache[key] = (time.monotonic() + ttl_for(value), value)
+    return value
+
+
+def _with_retry(fetch, attempts=2):
+    """NBA servers occasionally answer with an empty or non-JSON body; one retry usually fixes it."""
+    for attempt in range(attempts):
+        try:
+            return fetch()
+        except Exception:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(0.5)
+
+
+def _day_ttl(result):
+    games = result["games"]
+    if games and all(g["status"] == 3 for g in games):
+        return FINISHED_DAY_TTL
+    return UNFINISHED_DAY_TTL
+
+
+def _eastern_start_utc(game_date, status_text):
+    """Scheduled stats games only give '7:30 pm ET'; turn that into a UTC timestamp."""
+    m = re.match(r"(\d{1,2}):(\d{2})\s*([ap]m)\s*ET", status_text or "", re.I)
+    if not m:
+        return None
+    hour, minute = int(m.group(1)) % 12, int(m.group(2))
+    if m.group(3).lower() == "pm":
+        hour += 12
+    day = date_cls.fromisoformat(game_date)
+    local = datetime(day.year, day.month, day.day, hour, minute, tzinfo=EASTERN)
+    return local.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _parse_clock(clock):
@@ -49,7 +98,7 @@ def _live_leader(leader):
     }
 
 
-def get_live_games():
+def _fetch_live_games():
     board = scoreboard.ScoreBoard(timeout=REQUEST_TIMEOUT).get_dict()["scoreboard"]
     games = []
     for g in board.get("games", []):
@@ -88,7 +137,11 @@ def _stats_team(line):
     }
 
 
-def get_games_by_date(game_date: str):
+def get_live_games():
+    return _cached("live", lambda _: LIVE_TTL, _fetch_live_games)
+
+
+def _fetch_games_by_date(game_date: str):
     data = scoreboardv2.ScoreboardV2(
         game_date=game_date, timeout=REQUEST_TIMEOUT
     ).get_normalized_dict()
@@ -102,7 +155,8 @@ def get_games_by_date(game_date: str):
             "statusText": (h.get("GAME_STATUS_TEXT") or "").strip(),
             "period": h.get("LIVE_PERIOD"),
             "clock": (h.get("LIVE_PC_TIME") or "").strip(),
-            "startTimeUTC": None,
+            "startTimeUTC": _eastern_start_utc(game_date, h.get("GAME_STATUS_TEXT"))
+            if h.get("GAME_STATUS_ID") == 1 else None,
             "arena": h.get("ARENA_NAME"),
             "home": _stats_team(lines.get((gid, h.get("HOME_TEAM_ID")))),
             "away": _stats_team(lines.get((gid, h.get("VISITOR_TEAM_ID")))),
@@ -111,10 +165,12 @@ def get_games_by_date(game_date: str):
     return {"date": game_date, "source": "stats", "games": games}
 
 
+def get_games_by_date(game_date: str):
+    return _cached(("date", game_date), _day_ttl, lambda: _fetch_games_by_date(game_date))
+
+
 def get_games(game_date: Optional[str] = None):
-    """Games for a date (YYYY-MM-DD). Uses the live feed when the date is the live board's date."""
-    if game_date:
-        date_cls.fromisoformat(game_date)  # raises ValueError on bad input
+    """Games for a date (YYYY-MM-DD, already validated). Uses the live feed for the live board's date."""
     try:
         live = get_live_games()
     except Exception:

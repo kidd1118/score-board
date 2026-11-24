@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const REFRESH_MS = 30000;
 const STATUS = { SCHEDULED: 1, LIVE: 2, FINAL: 3 };
@@ -16,13 +16,56 @@ function shiftDate(iso, days) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
+const STRIP_DAYS = 3; // days shown on each side of the selected date
+
+function dayParts(iso) {
+  const d = new Date(`${iso}T00:00:00`);
+  return { weekday: WEEKDAYS[d.getDay()], label: `${d.getMonth() + 1}/${d.getDate()}` };
+}
+
+function DateStrip({ selected, today, onSelect }) {
+  const days = [];
+  for (let i = -STRIP_DAYS; i <= STRIP_DAYS; i += 1) days.push(shiftDate(selected, i));
+  return (
+    <nav className="date-strip" aria-label="選擇日期">
+      <button className="strip-arrow" onClick={() => onSelect(shiftDate(selected, -1))} aria-label="前一天">
+        ‹
+      </button>
+      {days.map((iso) => {
+        const { weekday, label } = dayParts(iso);
+        return (
+          <button
+            key={iso}
+            className={`day ${iso === selected ? 'selected' : ''}`}
+            aria-current={iso === selected ? 'date' : undefined}
+            onClick={() => onSelect(iso)}
+          >
+            <span className="day-week">{iso === today ? '今天' : `週${weekday}`}</span>
+            <span className="day-date">{label}</span>
+          </button>
+        );
+      })}
+      <button className="strip-arrow" onClick={() => onSelect(shiftDate(selected, 1))} aria-label="後一天">
+        ›
+      </button>
+    </nav>
+  );
+}
+
 function periodLabel(i) {
   return i < 4 ? `Q${i + 1}` : `OT${i - 3}`;
 }
 
+// Local tip-off time; includes the local date because in Asia it is usually the next morning.
 function formatStart(utc) {
   if (!utc) return null;
-  return new Date(utc).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return new Date(utc).toLocaleString([], {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function TeamRow({ team, winner, showScore }) {
@@ -112,33 +155,54 @@ function GameCard({ game }) {
   );
 }
 
-export default function GamesDashboard() {
-  const [date, setDate] = useState(null); // null = today's live board
+/**
+ * `date` (YYYY-MM-DD, US date) comes from the URL; null means today's live board.
+ * `onDateChange(null | iso)` updates the URL.
+ */
+export default function GamesDashboard({ date = null, onDateChange }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('all');
   const [updatedAt, setUpdatedAt] = useState(null);
+  const [liveDate, setLiveDate] = useState(null);
+  const requestId = useRef(0);
 
   const load = useCallback(async () => {
+    const id = ++requestId.current;
     setLoading(true);
     try {
       const res = await fetch(date ? `/games/?date=${date}` : '/games/');
       const body = await res.json();
       if (!res.ok) throw new Error(body.detail || res.statusText);
+      if (id !== requestId.current) return; // a newer date was requested meanwhile
       setData(body);
       setError(null);
       setUpdatedAt(new Date());
+      if (body.source === 'live') setLiveDate(body.date);
     } catch (e) {
-      setError(e.message);
+      if (id === requestId.current) setError(e.message);
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
   }, [date]);
 
   useEffect(() => {
+    setData(null);
+    setError(null);
     load();
   }, [load]);
+
+  // Learn which US date the live board is on, so the strip can mark "今天".
+  useEffect(() => {
+    if (liveDate || date === null) return;
+    fetch('/games/')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body) => body && setLiveDate(body.date))
+      .catch(() => {});
+  }, [date, liveDate]);
+
+  const selectDate = (iso) => onDateChange(iso && iso === liveDate ? null : iso);
 
   const hasLive = data?.games.some((g) => g.status === STATUS.LIVE);
   useEffect(() => {
@@ -157,25 +221,20 @@ export default function GamesDashboard() {
   }, [data]);
 
   const games = (data?.games || []).filter((g) => filter === 'all' || g.status === filter);
-  const shownDate = date || data?.date;
+  const shownDate = date || data?.date || liveDate;
 
   return (
     <div className="dashboard">
       <header className="top-bar">
         <h1>NBA Games</h1>
         <div className="date-nav">
-          <button onClick={() => shownDate && setDate(shiftDate(shownDate, -1))} disabled={!shownDate}>
-            ‹
-          </button>
           <input
             type="date"
+            aria-label="跳到日期"
             value={shownDate || ''}
-            onChange={(e) => setDate(e.target.value || null)}
+            onChange={(e) => selectDate(e.target.value || null)}
           />
-          <button onClick={() => shownDate && setDate(shiftDate(shownDate, 1))} disabled={!shownDate}>
-            ›
-          </button>
-          <button className="today" onClick={() => setDate(null)} disabled={date === null}>
+          <button className="today" onClick={() => onDateChange(null)} disabled={date === null}>
             今天
           </button>
           <button onClick={load} disabled={loading}>
@@ -183,6 +242,8 @@ export default function GamesDashboard() {
           </button>
         </div>
       </header>
+
+      {shownDate && <DateStrip selected={shownDate} today={liveDate} onSelect={selectDate} />}
 
       <section className="summary">
         {FILTERS.map((f) => (
@@ -199,14 +260,18 @@ export default function GamesDashboard() {
 
       {updatedAt && (
         <p className="meta">
-          更新於 {updatedAt.toLocaleTimeString()}
+          日期為美國當地日期，開賽時間已換算為你的時區 · 更新於 {updatedAt.toLocaleTimeString()}
           {hasLive && ` · 每 ${REFRESH_MS / 1000} 秒自動更新`}
         </p>
       )}
 
       {error && <div className="error">無法取得比賽資料：{error}</div>}
 
-      {!error && data && games.length === 0 && <div className="empty">這天沒有比賽</div>}
+      {!error && !data && loading && <div className="empty">載入中…</div>}
+
+      {!error && data && games.length === 0 && (
+        <div className="empty">{data.games.length ? '沒有符合篩選的比賽' : '這天沒有比賽'}</div>
+      )}
 
       <main className="games-grid">
         {games.map((g) => (
