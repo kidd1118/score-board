@@ -1,6 +1,6 @@
 import datetime as dt
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from typing import Dict, Optional, Union
 
 from pydantic import BaseModel
@@ -96,37 +96,79 @@ class LineupIn(BaseModel):
     slots: Dict[str, Optional[int]]
 
 
-# must be declared before /fantasy/{date}
-@app.get("/fantasy/history")
-def get_fantasy_history():
-    try:
-        return nba_fantasy.get_history()
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"NBA API request failed: {e}")
+class UserIn(BaseModel):
+    name: str
 
-@app.get("/fantasy/{date}/pool")
-def get_fantasy_pool(date: str):
-    date = _check_date(date)
-    try:
-        return nba_fantasy.get_pool(date)
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"NBA API request failed: {e}")
 
-@app.get("/fantasy/{date}")
-def get_fantasy_lineup(date: str):
-    date = _check_date(date)
+def _nba(fetch):
+    """Run an NBA-backed call; rule violations become 400, NBA failures 502."""
     try:
-        return nba_fantasy.get_lineup(date)
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"NBA API request failed: {e}")
-
-@app.put("/fantasy/{date}")
-def save_fantasy_lineup(date: str, lineup: LineupIn):
-    date = _check_date(date)
-    try:
-        return nba_fantasy.save_lineup(date, lineup.slots)
+        return fetch()
+    except nba_fantasy.NameTaken as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except nba_fantasy.LineupError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"NBA API request failed: {e}")
 
+
+def _fantasy_user(name: str):
+    found = nba_fantasy.find_user(name)
+    if found is None:
+        raise HTTPException(status_code=404, detail="找不到這位玩家")
+    return found[0]
+
+
+def _signed_in(token: Optional[str]):
+    key = nba_fantasy.user_for_token(token)
+    if key is None:
+        raise HTTPException(status_code=401, detail="請先加入遊戲（金鑰無效或已失效）")
+    return key
+
+
+# Fantasy routes without a date must be declared before /fantasy/{date}/...
+@app.post("/fantasy/users")
+def register_fantasy_user(user: UserIn):
+    return _nba(lambda: nba_fantasy.register(user.name))
+
+@app.get("/fantasy/me")
+def get_fantasy_me(x_fantasy_token: Optional[str] = Header(None)):
+    key = _signed_in(x_fantasy_token)
+    return {"name": nba_fantasy.find_user_name(key)}
+
+@app.get("/fantasy/salary")
+def get_fantasy_salary():
+    return nba_fantasy.salary_info()
+
+@app.get("/fantasy/leaderboard")
+def get_fantasy_leaderboard():
+    return _nba(nba_fantasy.get_leaderboard)
+
+@app.get("/fantasy/history/{name}")
+def get_fantasy_history(name: str):
+    key = _fantasy_user(name)
+    return _nba(lambda: nba_fantasy.get_history(key))
+
+@app.get("/fantasy/{date}/pool")
+def get_fantasy_pool(date: str):
+    date = _check_date(date)
+    return _nba(lambda: nba_fantasy.get_pool(date))
+
+@app.get("/fantasy/{date}/leaderboard")
+def get_fantasy_daily_leaderboard(date: str):
+    date = _check_date(date)
+    return _nba(lambda: nba_fantasy.get_daily_leaderboard(date))
+
+# Anyone can look; picks whose game hasn't started are only shown to their owner.
+@app.get("/fantasy/{date}/lineup/{name}")
+def get_fantasy_lineup(date: str, name: str, x_fantasy_token: Optional[str] = Header(None)):
+    date = _check_date(date)
+    key = _fantasy_user(name)
+    reveal = nba_fantasy.user_for_token(x_fantasy_token) == key
+    return _nba(lambda: nba_fantasy.get_lineup(date, key, reveal))
+
+@app.put("/fantasy/{date}/lineup")
+def save_fantasy_lineup(date: str, lineup: LineupIn, x_fantasy_token: Optional[str] = Header(None)):
+    date = _check_date(date)
+    key = _signed_in(x_fantasy_token)
+    return _nba(lambda: nba_fantasy.save_lineup(date, key, lineup.slots))

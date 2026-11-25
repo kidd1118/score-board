@@ -6,10 +6,10 @@ import TeamsDashboard from './TeamsDashboard';
 import FantasyDashboard from './FantasyDashboard';
 
 const PAGES = [
-  { key: 'games', label: '比賽' },
-  { key: 'teams', label: '球隊' },
-  { key: 'players', label: '球員' },
-  { key: 'fantasy', label: '小遊戲' },
+  { key: 'games', label: 'Games' },
+  { key: 'teams', label: 'Teams' },
+  { key: 'players', label: 'Players' },
+  { key: 'fantasy', label: 'Daily Fantasy' },
 ];
 
 // Routes live in the URL hash so a refresh keeps the current view:

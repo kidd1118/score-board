@@ -6,13 +6,23 @@ day's box score:
 
     points x2, rebounds x3, assists x4, steals x5, blocks x5, turnovers x-2
 
-A player locks when his game starts: he can no longer be picked, and if he is
-already in the lineup he can no longer be swapped out.
+The six players' real salaries (salaries.json) may total at most SALARY_CAP.
 
-Lineups are stored in a JSON file (single user), keyed by date.
+A player locks when their game starts: they can no longer be picked, and if they are
+already in the lineup they can no longer be swapped out.
+
+Several people can play. Each registers a nickname and gets a secret token
+(kept by the browser) that is required to change their own lineup. Anyone can
+see the leaderboards and other lineups, but a pick stays hidden from others
+until that player's game starts, so lineups can't be copied.
+
+Data is stored in a JSON file.
 """
 import json
 import os
+import re
+import unicodedata
+import secrets
 import threading
 from pathlib import Path
 
@@ -29,17 +39,33 @@ SLOTS = ["PG", "SG", "SF", "PF", "C", "6TH"]
 SLOT_POSITION = {"PG": "G", "SG": "G", "SF": "F", "PF": "F", "C": "C", "6TH": None}
 SCORING = {"pts": 2, "reb": 3, "ast": 4, "stl": 5, "blk": 5, "tov": -2}
 
+# Total salary a lineup may carry, using players' real salaries (salaries.json).
+SALARY_CAP = 148_465_000
+SALARY_FILE = Path(__file__).parent / "salaries.json"
+# Players missing from salaries.json (mostly two-way and 10-day contracts) count
+# as the 2026-27 rookie minimum.
+UNLISTED_SALARY = 1_357_763
+# Basketball-Reference team codes that differ from the NBA's.
+BBREF_TEAMS = {"BRK": "BKN", "CHO": "CHA", "PHO": "PHX"}
+
 SCHEDULED, LIVE, FINAL = 1, 2, 3
 PLAYERS_TTL = 6 * 60 * 60
 LIVE_BOX_TTL = 15
 FINAL_BOX_TTL = 6 * 60 * 60
+
+NAME_MAX = 20
+LEGACY_NAME = "玩家1"  # owner of lineups saved before the game was multiplayer
 
 DATA_FILE = Path(os.environ.get("FANTASY_DATA_FILE", Path(__file__).parent / "data" / "fantasy.json"))
 _store_lock = threading.Lock()
 
 
 class LineupError(ValueError):
-    """A lineup change that breaks the game rules."""
+    """A request that breaks the game rules (bad lineup, bad name)."""
+
+
+class NameTaken(LineupError):
+    """Someone already registered that name."""
 
 
 # ---------- scoring ----------
@@ -54,11 +80,31 @@ def eligible_slots(position):
 
 
 # ---------- storage ----------
+#
+# {
+#   "users":   {key: {"name": display name, "token": secret | null}},
+#   "lineups": {date: {key: {"slots": {...}, "finalTotal": n | null}}}
+# }
+# `key` is the case-folded name, so "Leo" and "leo" are the same player.
+
+def _empty():
+    return {"users": {}, "lineups": {}}
+
 
 def _load():
     if not DATA_FILE.exists():
-        return {}
-    return json.loads(DATA_FILE.read_text())
+        return _empty()
+    data = json.loads(DATA_FILE.read_text())
+    if "lineups" not in data:
+        # Single-player format ({date: lineup}): hand those lineups to an unclaimed
+        # player; the first person to register that name takes it over.
+        key = user_key(LEGACY_NAME)
+        migrated = _empty()
+        if data:
+            migrated["users"][key] = {"name": LEGACY_NAME, "token": None}
+            migrated["lineups"] = {date: {key: entry} for date, entry in data.items()}
+        return migrated
+    return data
 
 
 def _save(data):
@@ -68,7 +114,93 @@ def _save(data):
     tmp.replace(DATA_FILE)
 
 
+# ---------- players (people playing the game) ----------
+
+def user_key(name):
+    return " ".join(name.split()).casefold()
+
+
+def register(name):
+    """Create a player and return {name, token}. The token is the only credential."""
+    name = " ".join((name or "").split())
+    if not name:
+        raise LineupError("請輸入暱稱")
+    if len(name) > NAME_MAX:
+        raise LineupError(f"暱稱最多 {NAME_MAX} 個字")
+    if any(not ch.isprintable() for ch in name):
+        raise LineupError("暱稱不能包含特殊字元")
+    key = user_key(name)
+    token = secrets.token_urlsafe(18)
+    with _store_lock:
+        data = _load()
+        existing = data["users"].get(key)
+        if existing and existing.get("token"):
+            raise NameTaken(f"「{existing['name']}」已經有人使用")
+        data["users"][key] = {"name": existing["name"] if existing else name, "token": token}
+        _save(data)
+    return {"name": data["users"][key]["name"], "token": token}
+
+
+def user_for_token(token):
+    """The player key a token belongs to, or None."""
+    if not token:
+        return None
+    with _store_lock:
+        users = _load()["users"]
+    for key, user in users.items():
+        if user.get("token") and secrets.compare_digest(user["token"], token):
+            return key
+    return None
+
+
+def find_user(name):
+    """(key, display name) for a player name, or None."""
+    key = user_key(name)
+    with _store_lock:
+        user = _load()["users"].get(key)
+    return (key, user["name"]) if user else None
+
+
 # ---------- NBA data ----------
+
+# ---------- salaries ----------
+
+def _name_key(name):
+    """'Nikola Jokić' / 'nikola jokic' -> 'nikola jokic'; drops punctuation and Jr./II/III suffixes."""
+    plain = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().lower()
+    words = re.sub(r"[^a-z ]", "", plain.replace("-", " ")).split()
+    return " ".join(w for w in words if w not in {"jr", "sr", "ii", "iii", "iv"})
+
+
+def _load_salaries():
+    """(rows, season) where rows are (name key, team, salary)."""
+    data = json.loads(SALARY_FILE.read_text())
+    rows = [(_name_key(p["name"]), BBREF_TEAMS.get(p["team"], p["team"]), p["salary"]) for p in data["players"]]
+    return rows, data.get("season")
+
+
+def _salary_for(rows, name, team):
+    """(salary, listed) for a player on `team`."""
+    key = _name_key(name)
+    same_name = [(t, salary) for k, t, salary in rows if k == key]
+    if same_name:
+        # Waived players also carry dead money from old teams; prefer the current team's contract.
+        current = [salary for t, salary in same_name if t == team]
+        return (current[0] if current else max(salary for _, salary in same_name)), True
+    # Nicknames ("Ron" vs "Ronald"): same team, same last name, one first name a prefix of the other.
+    first, last = key.split()[0], key.split()[-1]
+    similar = [
+        salary for k, t, salary in rows
+        if t == team and k.split()[-1] == last and (k.startswith(first) or first.startswith(k.split()[0]))
+    ]
+    if len(similar) == 1:
+        return similar[0], True
+    return UNLISTED_SALARY, False
+
+
+def salary_info():
+    return {"cap": SALARY_CAP, "season": _load_salaries()[1], "unlisted": UNLISTED_SALARY}
+
 
 def _fetch_players():
     index = playerindex.PlayerIndex(active_nullable=1, timeout=REQUEST_TIMEOUT).get_normalized_dict()["PlayerIndex"]
@@ -76,15 +208,20 @@ def _fetch_players():
         per_mode_detailed="PerGame", timeout=REQUEST_TIMEOUT
     ).get_normalized_dict()["LeagueDashPlayerStats"]
     avg_by_id = {a["PLAYER_ID"]: a for a in averages}
+    salaries, _ = _load_salaries()
     players = []
     for p in index:
         if not p.get("TEAM_ID"):
             continue
         a = avg_by_id.get(p["PERSON_ID"], {})
         avg = {key: a.get(key.upper()) or 0 for key in SCORING}
+        name = f"{p.get('PLAYER_FIRST_NAME', '')} {p.get('PLAYER_LAST_NAME', '')}".strip()
+        salary, listed = _salary_for(salaries, name, p.get("TEAM_ABBREVIATION"))
         players.append({
             "id": p["PERSON_ID"],
-            "name": f"{p.get('PLAYER_FIRST_NAME', '')} {p.get('PLAYER_LAST_NAME', '')}".strip(),
+            "name": name,
+            "salary": salary,
+            "salaryListed": listed,
             "teamId": p["TEAM_ID"],
             "team": p.get("TEAM_ABBREVIATION"),
             "position": p.get("POSITION") or "",
@@ -98,6 +235,18 @@ def _fetch_players():
 
 def _players():
     return cached("fantasy-players", lambda _: PLAYERS_TTL, _fetch_players)
+
+
+def _pick_salary(pick):
+    """Salary saved with a pick; picks made before the salary cap use today's salary."""
+    if pick.get("salary") is not None:
+        return pick["salary"]
+    player = next((p for p in _players() if p["id"] == pick["id"]), None)
+    return player["salary"] if player else UNLISTED_SALARY
+
+
+def _money(amount):
+    return f"${amount:,}"
 
 
 def _fetch_box(game_id):
@@ -169,19 +318,21 @@ def get_pool(date):
     return {"date": date, "games": len({p["game"]["id"] for p in pool}), "players": pool}
 
 
-def _slot_view(slot, pick, games_by_id):
+def _slot_view(slot, pick, games_by_id, reveal):
+    empty = {"slot": slot, "player": None, "game": None, "stats": None, "points": 0, "locked": False, "hidden": False}
     if not pick:
-        return {"slot": slot, "player": None, "game": None, "stats": None, "points": 0, "locked": False}
+        return empty
     game = games_by_id.get(pick["gameId"])
+    locked = bool(game) and game["status"] != SCHEDULED
+    if not reveal and not locked:
+        return {**empty, "hidden": True}
     view = {
-        "slot": slot,
-        "player": {k: pick[k] for k in ("id", "name", "team", "position")},
+        **empty,
+        "player": {**{k: pick[k] for k in ("id", "name", "team", "position")}, "salary": _pick_salary(pick)},
         "game": _game_view(game, pick["teamId"]) if game else None,
-        "stats": None,
-        "points": 0,
-        "locked": bool(game) and game["status"] != SCHEDULED,
+        "locked": locked,
     }
-    if game and game["status"] != SCHEDULED:
+    if locked:
         stats = _box(game["id"])["players"].get(pick["id"])
         if stats:
             view["stats"] = stats
@@ -191,28 +342,42 @@ def _slot_view(slot, pick, games_by_id):
     return view
 
 
-def get_lineup(date):
+def get_lineup(date, key, reveal=True):
+    """One player's lineup for `date`. With reveal=False, picks whose game hasn't started are hidden."""
     with _store_lock:
-        entry = _load().get(date, {})
+        data = _load()
+    entry = data["lineups"].get(date, {}).get(key, {})
     picks = entry.get("slots", {})
     games_by_id = {g["id"]: g for g in nba_games.get_games(date)["games"]} if picks else {}
-    slots = [_slot_view(slot, picks.get(slot), games_by_id) for slot in SLOTS]
+    slots = [_slot_view(slot, picks.get(slot), games_by_id, reveal) for slot in SLOTS]
     total = sum(s["points"] for s in slots)
+    salary = sum(_pick_salary(p) for p in picks.values())
 
-    picked_games = [s["game"] for s in slots if s["game"]]
-    final = bool(picked_games) and all(g["status"] == FINAL for g in picked_games)
+    picked_games = [games_by_id.get(p["gameId"]) for p in picks.values()]
+    final = bool(picked_games) and all(g and g["status"] == FINAL for g in picked_games)
     if final and entry.get("finalTotal") != total:
         with _store_lock:
             data = _load()
-            if date in data:
-                data[date]["finalTotal"] = total
+            stored = data["lineups"].get(date, {}).get(key)
+            if stored:
+                stored["finalTotal"] = total
                 _save(data)
 
-    return {"date": date, "slots": slots, "total": total, "final": final, "scoring": SCORING}
+    user = data["users"].get(key, {})
+    return {
+        "date": date,
+        "player": user.get("name", key),
+        "slots": slots,
+        "total": total,
+        "final": final,
+        "scoring": SCORING,
+        # Hidden picks count too, so others only learn the total, not who it is.
+        "salary": {"used": salary, "cap": SALARY_CAP, "left": SALARY_CAP - salary},
+    }
 
 
-def save_lineup(date, picks):
-    """Replace the lineup for `date`. `picks` maps slot -> player id (or None)."""
+def save_lineup(date, key, picks):
+    """Replace `key`'s lineup for `date`. `picks` maps slot -> player id (or None)."""
     unknown = set(picks) - set(SLOTS)
     if unknown:
         raise LineupError(f"未知的位置：{', '.join(sorted(unknown))}")
@@ -225,7 +390,8 @@ def save_lineup(date, picks):
 
     with _store_lock:
         data = _load()
-        current = data.get(date, {}).get("slots", {})
+        day = data["lineups"].setdefault(date, {})
+        current = day.get(key, {}).get("slots", {})
         new_slots = {}
         for slot in SLOTS:
             new_id = picks.get(slot)
@@ -253,29 +419,100 @@ def save_lineup(date, picks):
                 "teamId": player["teamId"],
                 "position": player["position"],
                 "gameId": player["game"]["id"],
+                "salary": player["salary"],
             }
+        old_salary = sum(_pick_salary(p) for p in current.values())
+        new_salary = sum(_pick_salary(p) for p in new_slots.values())
+        # A lineup over the cap (e.g. saved before the cap existed) may still shrink.
+        if new_salary > SALARY_CAP and new_salary > old_salary:
+            raise LineupError(f"薪資總額 {_money(new_salary)} 超過上限 {_money(SALARY_CAP)}")
         if new_slots:
-            data[date] = {"slots": new_slots, "finalTotal": None}
+            day[key] = {"slots": new_slots, "finalTotal": None}
         else:
-            data.pop(date, None)
+            day.pop(key, None)
+        if not day:
+            data["lineups"].pop(date, None)
         _save(data)
-    return get_lineup(date)
+    return get_lineup(date, key)
 
 
-def get_history():
-    """Every date with a saved lineup, newest first, with its total."""
+def _rank(rows, score):
+    """Competition ranking (1, 1, 3) by `score`, rows already sorted best first."""
+    previous, rank = None, 0
+    for i, row in enumerate(rows, start=1):
+        if score(row) != previous:
+            rank, previous = i, score(row)
+        row["rank"] = rank
+    return rows
+
+
+def _day_results(date, entries):
+    """{key: (total, final, players)} for every lineup on `date`, settling any that just finished."""
+    results = {}
+    for key, entry in entries.items():
+        if entry.get("finalTotal") is not None:
+            results[key] = (entry["finalTotal"], True, len(entry.get("slots", {})))
+        else:
+            lineup = get_lineup(date, key)
+            results[key] = (lineup["total"], lineup["final"], len(entry.get("slots", {})))
+    return results
+
+
+def get_daily_leaderboard(date):
     with _store_lock:
         data = _load()
+    results = _day_results(date, data["lineups"].get(date, {}))
+    rows = [
+        {"player": data["users"].get(key, {}).get("name", key), "total": total, "final": final, "players": players}
+        for key, (total, final, players) in results.items()
+    ]
+    rows.sort(key=lambda r: (-r["total"], r["player"].casefold()))
+    return {"date": date, "entries": _rank(rows, lambda r: r["total"])}
+
+
+def get_leaderboard():
+    """Season standings over settled days: total points, days played, average, best day, daily wins."""
+    with _store_lock:
+        data = _load()
+    stats = {}
+    for date, entries in data["lineups"].items():
+        results = _day_results(date, entries)
+        settled = {key: total for key, (total, final, _) in results.items() if final}
+        everyone_settled = len(settled) == len(results)
+        best = max(settled.values()) if settled else None
+        for key, total in settled.items():
+            s = stats.setdefault(key, {"days": 0, "total": 0, "best": None, "wins": 0})
+            s["days"] += 1
+            s["total"] += total
+            s["best"] = total if s["best"] is None else max(s["best"], total)
+            if everyone_settled and len(settled) > 1 and total == best:
+                s["wins"] += 1
+    rows = [
+        {
+            "player": data["users"].get(key, {}).get("name", key),
+            **s,
+            "average": round(s["total"] / s["days"], 1),
+        }
+        for key, s in stats.items()
+    ]
+    rows.sort(key=lambda r: (-r["total"], -r["average"], r["player"].casefold()))
+    return {"entries": _rank(rows, lambda r: r["total"])}
+
+
+def get_history(key):
+    """Every date `key` has a lineup, newest first, with total and daily rank."""
+    with _store_lock:
+        dates = sorted((d for d, entries in _load()["lineups"].items() if key in entries), reverse=True)
+    name = find_user_name(key)
     history = []
-    for date in sorted(data, reverse=True):
-        entry = data[date]
-        total = entry.get("finalTotal")
-        if total is None:
-            total = get_lineup(date)["total"]
-        history.append({
-            "date": date,
-            "players": len(entry.get("slots", {})),
-            "total": total,
-            "final": entry.get("finalTotal") is not None,
-        })
+    for date in dates:
+        board = get_daily_leaderboard(date)["entries"]
+        mine = next((r for r in board if r["player"] == name), None)
+        if mine:
+            history.append({"date": date, **mine, "entrants": len(board)})
     return {"history": history}
+
+
+def find_user_name(key):
+    with _store_lock:
+        return _load()["users"].get(key, {}).get("name", key)

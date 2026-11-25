@@ -1,0 +1,2322 @@
+{
+ "season": "2026-27",
+ "source": "https://www.basketball-reference.com/contracts/players.html",
+ "updated": "2026-11-25",
+ "players": [
+  {
+   "name": "Stephen Curry",
+   "team": "GSW",
+   "salary": 62587158
+  },
+  {
+   "name": "Nikola Jokić",
+   "team": "DEN",
+   "salary": 59033114
+  },
+  {
+   "name": "Jayson Tatum",
+   "team": "BOS",
+   "salary": 58456566
+  },
+  {
+   "name": "Anthony Davis",
+   "team": "WAS",
+   "salary": 58456566
+  },
+  {
+   "name": "Giannis Antetokounmpo",
+   "team": "MIA",
+   "salary": 58456566
+  },
+  {
+   "name": "Joel Embiid",
+   "team": "PHI",
+   "salary": 58100000
+  },
+  {
+   "name": "Jaylen Brown",
+   "team": "PHI",
+   "salary": 57078728
+  },
+  {
+   "name": "Devin Booker",
+   "team": "PHO",
+   "salary": 57078728
+  },
+  {
+   "name": "Karl-Anthony Towns",
+   "team": "NYK",
+   "salary": 57078728
+  },
+  {
+   "name": "Jimmy Butler",
+   "team": "GSW",
+   "salary": 56832773
+  },
+  {
+   "name": "Paul George",
+   "team": "BOS",
+   "salary": 54126380
+  },
+  {
+   "name": "Kawhi Leonard",
+   "team": "TOR",
+   "salary": 50300000
+  },
+  {
+   "name": "Donovan Mitchell",
+   "team": "CLE",
+   "salary": 50105628
+  },
+  {
+   "name": "Cade Cunningham",
+   "team": "DET",
+   "salary": 50105628
+  },
+  {
+   "name": "Evan Mobley",
+   "team": "CLE",
+   "salary": 50105628
+  },
+  {
+   "name": "Jamal Murray",
+   "team": "DEN",
+   "salary": 50105628
+  },
+  {
+   "name": "De'Aaron Fox",
+   "team": "SAS",
+   "salary": 49800000
+  },
+  {
+   "name": "Bam Adebayo",
+   "team": "MIA",
+   "salary": 49800000
+  },
+  {
+   "name": "Luka Dončić",
+   "team": "LAL",
+   "salary": 49800000
+  },
+  {
+   "name": "Trae Young",
+   "team": "WAS",
+   "salary": 49488300
+  },
+  {
+   "name": "Jaren Jackson Jr.",
+   "team": "UTA",
+   "salary": 49000000
+  },
+  {
+   "name": "Zach LaVine",
+   "team": "SAC",
+   "salary": 48967380
+  },
+  {
+   "name": "Anthony Edwards",
+   "team": "MIN",
+   "salary": 48924624
+  },
+  {
+   "name": "Tyrese Haliburton",
+   "team": "IND",
+   "salary": 48924624
+  },
+  {
+   "name": "Pascal Siakam",
+   "team": "IND",
+   "salary": 48924624
+  },
+  {
+   "name": "Lauri Markkanen",
+   "team": "UTA",
+   "salary": 46113154
+  },
+  {
+   "name": "Domantas Sabonis",
+   "team": "SAC",
+   "salary": 45472000
+  },
+  {
+   "name": "Kevin Durant",
+   "team": "HOU",
+   "salary": 43902439
+  },
+  {
+   "name": "OG Anunoby",
+   "team": "NYK",
+   "salary": 42500000
+  },
+  {
+   "name": "Ja Morant",
+   "team": "POR",
+   "salary": 42166510
+  },
+  {
+   "name": "Zion Williamson",
+   "team": "NOP",
+   "salary": 42166510
+  },
+  {
+   "name": "Darius Garland",
+   "team": "LAC",
+   "salary": 42166510
+  },
+  {
+   "name": "Scottie Barnes",
+   "team": "TOR",
+   "salary": 41754690
+  },
+  {
+   "name": "Franz Wagner",
+   "team": "ORL",
+   "salary": 41754690
+  },
+  {
+   "name": "Jalen Williams",
+   "team": "OKC",
+   "salary": 41500000
+  },
+  {
+   "name": "Chet Holmgren",
+   "team": "OKC",
+   "salary": 41500000
+  },
+  {
+   "name": "Paolo Banchero",
+   "team": "ORL",
+   "salary": 41500000
+  },
+  {
+   "name": "Austin Reaves",
+   "team": "LAL",
+   "salary": 41240250
+  },
+  {
+   "name": "Shai Gilgeous-Alexander",
+   "team": "OKC",
+   "salary": 40806150
+  },
+  {
+   "name": "Michael Porter Jr.",
+   "team": "BRK",
+   "salary": 40806150
+  },
+  {
+   "name": "Tyrese Maxey",
+   "team": "PHI",
+   "salary": 40770520
+  },
+  {
+   "name": "LaMelo Ball",
+   "team": "MIN",
+   "salary": 40770520
+  },
+  {
+   "name": "Jalen Duren",
+   "team": "DET",
+   "salary": 40160643
+  },
+  {
+   "name": "Brandon Ingram",
+   "team": "LAC",
+   "salary": 40000000
+  },
+  {
+   "name": "Kyrie Irving",
+   "team": "DAL",
+   "salary": 39491282
+  },
+  {
+   "name": "Desmond Bane",
+   "team": "ORL",
+   "salary": 39446090
+  },
+  {
+   "name": "Jalen Brunson",
+   "team": "NYK",
+   "salary": 37739521
+  },
+  {
+   "name": "Rudy Gobert",
+   "team": "MIN",
+   "salary": 36500000
+  },
+  {
+   "name": "Jalen Green",
+   "team": "PHO",
+   "salary": 36251166
+  },
+  {
+   "name": "Alperen Şengün",
+   "team": "HOU",
+   "salary": 35642202
+  },
+  {
+   "name": "Jrue Holiday",
+   "team": "POR",
+   "salary": 34800000
+  },
+  {
+   "name": "Jerami Grant",
+   "team": "MEM",
+   "salary": 34206898
+  },
+  {
+   "name": "Jordan Poole",
+   "team": "NOP",
+   "salary": 34044642
+  },
+  {
+   "name": "Aaron Gordon",
+   "team": "DEN",
+   "salary": 33658037
+  },
+  {
+   "name": "Mikal Bridges",
+   "team": "NYK",
+   "salary": 33482145
+  },
+  {
+   "name": "Julius Randle",
+   "team": "BRK",
+   "salary": 33333334
+  },
+  {
+   "name": "Tyler Herro",
+   "team": "MIL",
+   "salary": 33000000
+  },
+  {
+   "name": "Dejounte Murray",
+   "team": "NOP",
+   "salary": 32785071
+  },
+  {
+   "name": "Immanuel Quickley",
+   "team": "TOR",
+   "salary": 32500000
+  },
+  {
+   "name": "Jalen Suggs",
+   "team": "ORL",
+   "salary": 32400000
+  },
+  {
+   "name": "James Harden",
+   "team": "CLE",
+   "salary": 30647619
+  },
+  {
+   "name": "Derrick White",
+   "team": "BOS",
+   "salary": 30348000
+  },
+  {
+   "name": "Walker Kessler",
+   "team": "LAL",
+   "salary": 30232558
+  },
+  {
+   "name": "Andrew Wiggins",
+   "team": "MIA",
+   "salary": 30169644
+  },
+  {
+   "name": "Jalen Johnson",
+   "team": "ATL",
+   "salary": 30000000
+  },
+  {
+   "name": "RJ Barrett",
+   "team": "TOR",
+   "salary": 29616071
+  },
+  {
+   "name": "Jarrett Allen",
+   "team": "CLE",
+   "salary": 28000000
+  },
+  {
+   "name": "Draymond Green",
+   "team": "GSW",
+   "salary": 27678571
+  },
+  {
+   "name": "Trey Murphy III",
+   "team": "NOP",
+   "salary": 27000000
+  },
+  {
+   "name": "Devin Vassell",
+   "team": "SAS",
+   "salary": 27000000
+  },
+  {
+   "name": "Myles Turner",
+   "team": "MIL",
+   "salary": 26584164
+  },
+  {
+   "name": "Jaden McDaniels",
+   "team": "MIN",
+   "salary": 26200001
+  },
+  {
+   "name": "Dyson Daniels",
+   "team": "ATL",
+   "salary": 25000000
+  },
+  {
+   "name": "Josh Giddey",
+   "team": "CHI",
+   "salary": 25000000
+  },
+  {
+   "name": "Fred VanVleet",
+   "team": "HOU",
+   "salary": 25000000
+  },
+  {
+   "name": "De'Andre Hunter",
+   "team": "SAC",
+   "salary": 24910714
+  },
+  {
+   "name": "Keegan Murray",
+   "team": "SAC",
+   "salary": 24137936
+  },
+  {
+   "name": "Jabari Smith Jr.",
+   "team": "HOU",
+   "salary": 23643411
+  },
+  {
+   "name": "Naz Reid",
+   "team": "CHO",
+   "salary": 23275862
+  },
+  {
+   "name": "Isaiah Hartenstein",
+   "team": "OKC",
+   "salary": 23148148
+  },
+  {
+   "name": "Nic Claxton",
+   "team": "CHI",
+   "salary": 23147727
+  },
+  {
+   "name": "Cameron Johnson",
+   "team": "DEN",
+   "salary": 23062500
+  },
+  {
+   "name": "Coby White",
+   "team": "CHO",
+   "salary": 22839506
+  },
+  {
+   "name": "Miles Bridges",
+   "team": "PHO",
+   "salary": 22826087
+  },
+  {
+   "name": "Damian Lillard",
+   "team": "MIL",
+   "salary": 35915403
+  },
+  {
+   "name": "Christian Braun",
+   "team": "DEN",
+   "salary": 21551726
+  },
+  {
+   "name": "Norman Powell",
+   "team": "CHI",
+   "salary": 21500000
+  },
+  {
+   "name": "CJ McCollum",
+   "team": "ATL",
+   "salary": 21000000
+  },
+  {
+   "name": "Josh Hart",
+   "team": "NYK",
+   "salary": 20923760
+  },
+  {
+   "name": "Peyton Watson",
+   "team": "CLE",
+   "salary": 20465116
+  },
+  {
+   "name": "Kyle Kuzma",
+   "team": "MIL",
+   "salary": 20345152
+  },
+  {
+   "name": "Ivica Zubac",
+   "team": "IND",
+   "salary": 20342140
+  },
+  {
+   "name": "Malik Monk",
+   "team": "SAC",
+   "salary": 20190035
+  },
+  {
+   "name": "Shaedon Sharpe",
+   "team": "POR",
+   "salary": 20089287
+  },
+  {
+   "name": "Dillon Brooks",
+   "team": "PHO",
+   "salary": 19992727
+  },
+  {
+   "name": "P.J. Washington",
+   "team": "DAL",
+   "salary": 19813044
+  },
+  {
+   "name": "Alex Caruso",
+   "team": "OKC",
+   "salary": 19550160
+  },
+  {
+   "name": "Andrew Nembhard",
+   "team": "IND",
+   "salary": 19550160
+  },
+  {
+   "name": "Kristaps Porziņģis",
+   "team": "GSW",
+   "salary": 19512195
+  },
+  {
+   "name": "Jakob Poeltl",
+   "team": "TOR",
+   "salary": 19500000
+  },
+  {
+   "name": "Bradley Beal",
+   "team": "PHO",
+   "salary": 25807810
+  },
+  {
+   "name": "Ayo Dosunmu",
+   "team": "MIN",
+   "salary": 19310345
+  },
+  {
+   "name": "Luguentz Dort",
+   "team": "ATL",
+   "salary": 18222222
+  },
+  {
+   "name": "Grayson Allen",
+   "team": "CHO",
+   "salary": 18125000
+  },
+  {
+   "name": "Wendell Carter Jr.",
+   "team": "ORL",
+   "salary": 18102000
+  },
+  {
+   "name": "Toumani Camara",
+   "team": "POR",
+   "salary": 18080358
+  },
+  {
+   "name": "Patrick Williams",
+   "team": "CHI",
+   "salary": 18000000
+  },
+  {
+   "name": "Kentavious Caldwell-Pope",
+   "team": "MEM",
+   "salary": 20194392
+  },
+  {
+   "name": "Keldon Johnson",
+   "team": "SAS",
+   "salary": 17500000
+  },
+  {
+   "name": "Daniel Gafford",
+   "team": "DAL",
+   "salary": 17263584
+  },
+  {
+   "name": "Santi Aldama",
+   "team": "DAL",
+   "salary": 17007043
+  },
+  {
+   "name": "John Collins",
+   "team": "DET",
+   "salary": 17000000
+  },
+  {
+   "name": "Victor Wembanyama",
+   "team": "SAS",
+   "salary": 16868246
+  },
+  {
+   "name": "Max Strus",
+   "team": "LAC",
+   "salary": 16660836
+  },
+  {
+   "name": "Nikola Jović",
+   "team": "MIA",
+   "salary": 16200000
+  },
+  {
+   "name": "Onyeka Okongwu",
+   "team": "ATL",
+   "salary": 16120000
+  },
+  {
+   "name": "Duncan Robinson",
+   "team": "DET",
+   "salary": 15992957
+  },
+  {
+   "name": "Terance Mann",
+   "team": "BRK",
+   "salary": 15500000
+  },
+  {
+   "name": "Gary Trent Jr.",
+   "team": "MIL",
+   "salary": 15200000
+  },
+  {
+   "name": "Brandon Miller",
+   "team": "CHO",
+   "salary": 15104626
+  },
+  {
+   "name": "Mitchell Robinson",
+   "team": "BOS",
+   "salary": 15044000
+  },
+  {
+   "name": "Tobias Harris",
+   "team": "SAS",
+   "salary": 15044000
+  },
+  {
+   "name": "Obi Toppin",
+   "team": "IND",
+   "salary": 15000000
+  },
+  {
+   "name": "Isaiah Stewart",
+   "team": "MEM",
+   "salary": 15000000
+  },
+  {
+   "name": "Herbert Jones",
+   "team": "NOP",
+   "salary": 14898786
+  },
+  {
+   "name": "Caris LeVert",
+   "team": "MIL",
+   "salary": 14809200
+  },
+  {
+   "name": "Dennis Schröder",
+   "team": "CHO",
+   "salary": 14809200
+  },
+  {
+   "name": "AJ Dybantsa",
+   "team": "WAS",
+   "salary": 14748000
+  },
+  {
+   "name": "Josh Green",
+   "team": "UTA",
+   "salary": 14679012
+  },
+  {
+   "name": "Bobby Portis",
+   "team": "MIA",
+   "salary": 14521414
+  },
+  {
+   "name": "Cooper Flagg",
+   "team": "DAL",
+   "salary": 14517480
+  },
+  {
+   "name": "Nickeil Alexander-Walker",
+   "team": "ATL",
+   "salary": 14403710
+  },
+  {
+   "name": "Grant Williams",
+   "team": "CHO",
+   "salary": 14265750
+  },
+  {
+   "name": "Jock Landale",
+   "team": "ATL",
+   "salary": 14100000
+  },
+  {
+   "name": "Tari Eason",
+   "team": "HOU",
+   "salary": 14051724
+  },
+  {
+   "name": "Rui Hachimura",
+   "team": "LAC",
+   "salary": 14000000
+  },
+  {
+   "name": "Corey Kispert",
+   "team": "ATL",
+   "salary": 13975000
+  },
+  {
+   "name": "Robert Williams",
+   "team": "POR",
+   "salary": 13968254
+  },
+  {
+   "name": "Quentin Grimes",
+   "team": "LAL",
+   "salary": 13953489
+  },
+  {
+   "name": "Julian Champagnie",
+   "team": "SAS",
+   "salary": 13888889
+  },
+  {
+   "name": "Zaccharie Risacher",
+   "team": "DAL",
+   "salary": 13826040
+  },
+  {
+   "name": "Scoot Henderson",
+   "team": "POR",
+   "salary": 13585523
+  },
+  {
+   "name": "Damian Lillard",
+   "team": "POR",
+   "salary": 35915403
+  },
+  {
+   "name": "Dorian Finney-Smith",
+   "team": "ATL",
+   "salary": 13335000
+  },
+  {
+   "name": "Darryn Peterson",
+   "team": "UTA",
+   "salary": 13195320
+  },
+  {
+   "name": "Deni Avdija",
+   "team": "POR",
+   "salary": 13125000
+  },
+  {
+   "name": "Sandro Mamukelashvili",
+   "team": "LAL",
+   "salary": 13000000
+  },
+  {
+   "name": "Steven Adams",
+   "team": "HOU",
+   "salary": 13000000
+  },
+  {
+   "name": "Dylan Harper",
+   "team": "SAS",
+   "salary": 12989040
+  },
+  {
+   "name": "Donte DiVincenzo",
+   "team": "MIN",
+   "salary": 12535000
+  },
+  {
+   "name": "Moses Moody",
+   "team": "GSW",
+   "salary": 12500000
+  },
+  {
+   "name": "Jarred Vanderbilt",
+   "team": "LAL",
+   "salary": 12428571
+  },
+  {
+   "name": "Davion Mitchell",
+   "team": "MIA",
+   "salary": 12400000
+  },
+  {
+   "name": "Alex Sarr",
+   "team": "WAS",
+   "salary": 12370680
+  },
+  {
+   "name": "Amen Thompson",
+   "team": "HOU",
+   "salary": 12258609
+  },
+  {
+   "name": "Cameron Boozer",
+   "team": "MEM",
+   "salary": 11849760
+  },
+  {
+   "name": "Isaac Okoro",
+   "team": "CHI",
+   "salary": 11814814
+  },
+  {
+   "name": "Mark Williams",
+   "team": "PHO",
+   "salary": 11728395
+  },
+  {
+   "name": "VJ Edgecombe",
+   "team": "PHI",
+   "salary": 11663880
+  },
+  {
+   "name": "Isaiah Joe",
+   "team": "DET",
+   "salary": 11323006
+  },
+  {
+   "name": "Ausar Thompson",
+   "team": "DET",
+   "salary": 11117925
+  },
+  {
+   "name": "Reed Sheppard",
+   "team": "HOU",
+   "salary": 11108880
+  },
+  {
+   "name": "Aaron Nesmith",
+   "team": "IND",
+   "salary": 11000000
+  },
+  {
+   "name": "T.J. McConnell",
+   "team": "IND",
+   "salary": 11000000
+  },
+  {
+   "name": "Royce O'Neale",
+   "team": "CHO",
+   "salary": 10875000
+  },
+  {
+   "name": "Sam Hauser",
+   "team": "BOS",
+   "salary": 10848215
+  },
+  {
+   "name": "Collin Gillespie",
+   "team": "PHO",
+   "salary": 10714286
+  },
+  {
+   "name": "Caleb Wilson",
+   "team": "CHI",
+   "salary": 10683720
+  },
+  {
+   "name": "Jusuf Nurkić",
+   "team": "UTA",
+   "salary": 10576923
+  },
+  {
+   "name": "Kon Knueppel",
+   "team": "CHO",
+   "salary": 10516560
+  },
+  {
+   "name": "Derrick Jones Jr.",
+   "team": "LAC",
+   "salary": 10476190
+  },
+  {
+   "name": "Luke Kornet",
+   "team": "SAS",
+   "salary": 10450000
+  },
+  {
+   "name": "Anthony Black",
+   "team": "ORL",
+   "salary": 10106316
+  },
+  {
+   "name": "A.J. Green",
+   "team": "MIL",
+   "salary": 10044644
+  },
+  {
+   "name": "Stephon Castle",
+   "team": "SAS",
+   "salary": 10015920
+  },
+  {
+   "name": "Caleb Martin",
+   "team": "DAL",
+   "salary": 10001493
+  },
+  {
+   "name": "Day'Ron Sharpe",
+   "team": "BRK",
+   "salary": 10000000
+  },
+  {
+   "name": "Keaton Wagler",
+   "team": "LAC",
+   "salary": 9674760
+  },
+  {
+   "name": "Buddy Hield",
+   "team": "CHI",
+   "salary": 9658536
+  },
+  {
+   "name": "Ace Bailey",
+   "team": "UTA",
+   "salary": 9523080
+  },
+  {
+   "name": "Naji Marshall",
+   "team": "DAL",
+   "salary": 9428571
+  },
+  {
+   "name": "Jalen Smith",
+   "team": "CHI",
+   "salary": 9428571
+  },
+  {
+   "name": "Collin Sexton",
+   "team": "LAL",
+   "salary": 9366000
+  },
+  {
+   "name": "Moritz Wagner",
+   "team": "BRK",
+   "salary": 9268293
+  },
+  {
+   "name": "Bilal Coulibaly",
+   "team": "WAS",
+   "salary": 9240012
+  },
+  {
+   "name": "Aaron Wiggins",
+   "team": "ATL",
+   "salary": 9224300
+  },
+  {
+   "name": "Ty Jerome",
+   "team": "MEM",
+   "salary": 9220050
+  },
+  {
+   "name": "Brook Lopez",
+   "team": "LAC",
+   "salary": 9187500
+  },
+  {
+   "name": "Sam Merrill",
+   "team": "CLE",
+   "salary": 9160715
+  },
+  {
+   "name": "Ron Holland",
+   "team": "DET",
+   "salary": 9069600
+  },
+  {
+   "name": "Dean Wade",
+   "team": "PHI",
+   "salary": 9000000
+  },
+  {
+   "name": "Mikel Brown Jr.",
+   "team": "BRK",
+   "salary": 8787000
+  },
+  {
+   "name": "Keon Ellis",
+   "team": "BRK",
+   "salary": 8780488
+  },
+  {
+   "name": "Tre Johnson",
+   "team": "WAS",
+   "salary": 8649600
+  },
+  {
+   "name": "Jarace Walker",
+   "team": "IND",
+   "salary": 8478542
+  },
+  {
+   "name": "Kevin Huerter",
+   "team": "DET",
+   "salary": 8333333
+  },
+  {
+   "name": "Zach Collins",
+   "team": "CHI",
+   "salary": 8292683
+  },
+  {
+   "name": "Quinten Post",
+   "team": "MEM",
+   "salary": 8285714
+  },
+  {
+   "name": "Max Christie",
+   "team": "DAL",
+   "salary": 8285714
+  },
+  {
+   "name": "Tidjane Salaün",
+   "team": "CHO",
+   "salary": 8237880
+  },
+  {
+   "name": "Deandre Ayton",
+   "team": "WAS",
+   "salary": 8104000
+  },
+  {
+   "name": "Kelly Oubre Jr.",
+   "team": "IND",
+   "salary": 8050000
+  },
+  {
+   "name": "Darius Acuff Jr.",
+   "team": "SAC",
+   "salary": 8021640
+  },
+  {
+   "name": "Jonathan Isaac",
+   "team": "ORL",
+   "salary": 10449421
+  },
+  {
+   "name": "Tre Mann",
+   "team": "WAS",
+   "salary": 8000000
+  },
+  {
+   "name": "Harrison Barnes",
+   "team": "SAS",
+   "salary": 8000000
+  },
+  {
+   "name": "Tre Jones",
+   "team": "CHI",
+   "salary": 8000000
+  },
+  {
+   "name": "Jeremiah Fears",
+   "team": "NOP",
+   "salary": 7896240
+  },
+  {
+   "name": "Taylor Hendricks",
+   "team": "MEM",
+   "salary": 7805900
+  },
+  {
+   "name": "Bennedict Mathurin",
+   "team": "NOP",
+   "salary": 7804878
+  },
+  {
+   "name": "Jaylin Williams",
+   "team": "OKC",
+   "salary": 7774648
+  },
+  {
+   "name": "Payton Pritchard",
+   "team": "BOS",
+   "salary": 7767857
+  },
+  {
+   "name": "Klay Thompson",
+   "team": "DAL",
+   "salary": 13260317
+  },
+  {
+   "name": "Goga Bitadze",
+   "team": "ORL",
+   "salary": 7608696
+  },
+  {
+   "name": "Donovan Clingan",
+   "team": "POR",
+   "salary": 7519920
+  },
+  {
+   "name": "Zeke Nnaji",
+   "team": "DEN",
+   "salary": 7466667
+  },
+  {
+   "name": "Cason Wallace",
+   "team": "OKC",
+   "salary": 7420806
+  },
+  {
+   "name": "Kingston Flemings",
+   "team": "ATL",
+   "salary": 7348680
+  },
+  {
+   "name": "Dereck Lively II",
+   "team": "DAL",
+   "salary": 7239131
+  },
+  {
+   "name": "Egor Dëmin",
+   "team": "BRK",
+   "salary": 7233720
+  },
+  {
+   "name": "Gradey Dick",
+   "team": "LAC",
+   "salary": 7131511
+  },
+  {
+   "name": "Clint Capela",
+   "team": "HOU",
+   "salary": 7035000
+  },
+  {
+   "name": "Jordan Hawkins",
+   "team": "MEM",
+   "salary": 7021895
+  },
+  {
+   "name": "Isaiah Jackson",
+   "team": "LAC",
+   "salary": 7000000
+  },
+  {
+   "name": "Rob Dillingham",
+   "team": "CHO",
+   "salary": 6889320
+  },
+  {
+   "name": "Al Horford",
+   "team": "GSW",
+   "salary": 6822000
+  },
+  {
+   "name": "Morez Johnson Jr.",
+   "team": "DAL",
+   "salary": 6754800
+  },
+  {
+   "name": "Collin Murray-Boyles",
+   "team": "TOR",
+   "salary": 6649560
+  },
+  {
+   "name": "Keyonte George",
+   "team": "UTA",
+   "salary": 6563925
+  },
+  {
+   "name": "Tim Hardaway Jr.",
+   "team": "MIA",
+   "salary": 6500000
+  },
+  {
+   "name": "Saddiq Bey",
+   "team": "NOP",
+   "salary": 6440678
+  },
+  {
+   "name": "Bradley Beal",
+   "team": "LAC",
+   "salary": 25807810
+  },
+  {
+   "name": "Brayden Burries",
+   "team": "MIL",
+   "salary": 6417360
+  },
+  {
+   "name": "Zach Edey",
+   "team": "MEM",
+   "salary": 6332760
+  },
+  {
+   "name": "Khaman Maluach",
+   "team": "PHO",
+   "salary": 6316680
+  },
+  {
+   "name": "Yaxel Lendeborg",
+   "team": "GSW",
+   "salary": 6096240
+  },
+  {
+   "name": "Luke Kennard",
+   "team": "PHO",
+   "salary": 6064000
+  },
+  {
+   "name": "Jonathan Kuminga",
+   "team": "MIN",
+   "salary": 6064000
+  },
+  {
+   "name": "Marcus Smart",
+   "team": "HOU",
+   "salary": 6064000
+  },
+  {
+   "name": "Cody Williams",
+   "team": "MIN",
+   "salary": 6015600
+  },
+  {
+   "name": "Cedric Coward",
+   "team": "MEM",
+   "salary": 6001080
+  },
+  {
+   "name": "Spencer Jones",
+   "team": "DEN",
+   "salary": 6000000
+  },
+  {
+   "name": "Jaxson Hayes",
+   "team": "UTA",
+   "salary": 6000000
+  },
+  {
+   "name": "Josh Okogie",
+   "team": "UTA",
+   "salary": 6000000
+  },
+  {
+   "name": "Anfernee Simons",
+   "team": "PHI",
+   "salary": 6000000
+  },
+  {
+   "name": "Jake LaRavia",
+   "team": "LAL",
+   "salary": 6000000
+  },
+  {
+   "name": "Jaden Hardy",
+   "team": "LAL",
+   "salary": 6000000
+  },
+  {
+   "name": "D'Angelo Russell",
+   "team": "MEM",
+   "salary": 5969250
+  },
+  {
+   "name": "Jaime Jaquez Jr.",
+   "team": "MIL",
+   "salary": 5939141
+  },
+  {
+   "name": "Nicolas Batum",
+   "team": "LAC",
+   "salary": 5881680
+  },
+  {
+   "name": "Jordan Goodwin",
+   "team": "PHO",
+   "salary": 5864198
+  },
+  {
+   "name": "Aday Mara",
+   "team": "OKC",
+   "salary": 5791680
+  },
+  {
+   "name": "Ousmane Dieng",
+   "team": "MIL",
+   "salary": 5750000
+  },
+  {
+   "name": "Matas Buzelis",
+   "team": "CHI",
+   "salary": 5715360
+  },
+  {
+   "name": "Noa Essengue",
+   "team": "CHI",
+   "salary": 5701200
+  },
+  {
+   "name": "Kris Dunn",
+   "team": "LAC",
+   "salary": 5684800
+  },
+  {
+   "name": "Brandin Podziemski",
+   "team": "GSW",
+   "salary": 5679459
+  },
+  {
+   "name": "Paul Reed",
+   "team": "DET",
+   "salary": 5602689
+  },
+  {
+   "name": "Klay Thompson",
+   "team": "MIA",
+   "salary": 13260317
+  },
+  {
+   "name": "Khris Middleton",
+   "team": "WAS",
+   "salary": 5591122
+  },
+  {
+   "name": "Nate Ament",
+   "team": "MIL",
+   "salary": 5502000
+  },
+  {
+   "name": "Precious Achiuwa",
+   "team": "SAC",
+   "salary": 5477000
+  },
+  {
+   "name": "De'Anthony Melton",
+   "team": "GSW",
+   "salary": 5477000
+  },
+  {
+   "name": "Nikola Topić",
+   "team": "OKC",
+   "salary": 5429760
+  },
+  {
+   "name": "Derik Queen",
+   "team": "NOP",
+   "salary": 5416080
+  },
+  {
+   "name": "Noah Clowney",
+   "team": "BRK",
+   "salary": 5414034
+  },
+  {
+   "name": "Kevin Porter Jr.",
+   "team": "MIL",
+   "salary": 5390700
+  },
+  {
+   "name": "Landry Shamet",
+   "team": "NYK",
+   "salary": 5357143
+  },
+  {
+   "name": "Kris Murray",
+   "team": "MEM",
+   "salary": 5315004
+  },
+  {
+   "name": "Jordan Miller",
+   "team": "LAC",
+   "salary": 5300000
+  },
+  {
+   "name": "Hannes Steinbach",
+   "team": "CHO",
+   "salary": 5227200
+  },
+  {
+   "name": "Marcus Sasser",
+   "team": "DAL",
+   "salary": 5198983
+  },
+  {
+   "name": "Devin Carter",
+   "team": "ATL",
+   "salary": 5158080
+  },
+  {
+   "name": "Carter Bryant",
+   "team": "SAS",
+   "salary": 5145360
+  },
+  {
+   "name": "Ben Sheppard",
+   "team": "IND",
+   "salary": 5031669
+  },
+  {
+   "name": "Kenrich Williams",
+   "team": "OKC",
+   "salary": 5000000
+  },
+  {
+   "name": "Dailyn Swain",
+   "team": "CHI",
+   "salary": 4965480
+  },
+  {
+   "name": "Bub Carrington",
+   "team": "WAS",
+   "salary": 4900560
+  },
+  {
+   "name": "Thomas Sorber",
+   "team": "OKC",
+   "salary": 4887720
+  },
+  {
+   "name": "Brice Sensabaugh",
+   "team": "UTA",
+   "salary": 4862237
+  },
+  {
+   "name": "Julian Strawther",
+   "team": "DEN",
+   "salary": 4826931
+  },
+  {
+   "name": "Bennett Stirtz",
+   "team": "OKC",
+   "salary": 4717320
+  },
+  {
+   "name": "Kel'el Ware",
+   "team": "MIL",
+   "salary": 4654920
+  },
+  {
+   "name": "Yang Hansen",
+   "team": "POR",
+   "salary": 4643520
+  },
+  {
+   "name": "Gui Santos",
+   "team": "GSW",
+   "salary": 4629630
+  },
+  {
+   "name": "Jose Alvarado",
+   "team": "NYK",
+   "salary": 4500000
+  },
+  {
+   "name": "Josh Minott",
+   "team": "BRK",
+   "salary": 4500000
+  },
+  {
+   "name": "Ebuka Okorie",
+   "team": "DET",
+   "salary": 4481280
+  },
+  {
+   "name": "Jared McCain",
+   "team": "OKC",
+   "salary": 4422600
+  },
+  {
+   "name": "Joan Beringer",
+   "team": "MIN",
+   "salary": 4411200
+  },
+  {
+   "name": "Christian Anderson Jr.",
+   "team": "CHO",
+   "salary": 4257480
+  },
+  {
+   "name": "Dalton Knecht",
+   "team": "LAL",
+   "salary": 4201080
+  },
+  {
+   "name": "Walter Clayton",
+   "team": "MEM",
+   "salary": 4190520
+  },
+  {
+   "name": "Allen Graves",
+   "team": "TOR",
+   "salary": 4065720
+  },
+  {
+   "name": "Nolan Traoré",
+   "team": "BRK",
+   "salary": 4002000
+  },
+  {
+   "name": "Ryan Rollins",
+   "team": "MIL",
+   "salary": 4000000
+  },
+  {
+   "name": "Daniss Jenkins",
+   "team": "DET",
+   "salary": 4000000
+  },
+  {
+   "name": "Tristan Da Silva",
+   "team": "ORL",
+   "salary": 3991200
+  },
+  {
+   "name": "Miles McBride",
+   "team": "NYK",
+   "salary": 3956523
+  },
+  {
+   "name": "Javonte Green",
+   "team": "DET",
+   "salary": 3943679
+  },
+  {
+   "name": "Jayden Quaintance",
+   "team": "SAS",
+   "salary": 3902760
+  },
+  {
+   "name": "DeAndre Jordan",
+   "team": "NOP",
+   "salary": 3876529
+  },
+  {
+   "name": "LeBron James",
+   "team": "PHI",
+   "salary": 3876529
+  },
+  {
+   "name": "Svi Mykhailiuk",
+   "team": "UTA",
+   "salary": 3850000
+  },
+  {
+   "name": "Kasparas Jakučionis",
+   "team": "MIL",
+   "salary": 3841680
+  },
+  {
+   "name": "Gary Harris",
+   "team": "DET",
+   "salary": 3815861
+  },
+  {
+   "name": "Taurean Prince",
+   "team": "DET",
+   "salary": 3815861
+  },
+  {
+   "name": "Pat Connaughton",
+   "team": "CHO",
+   "salary": 3815861
+  },
+  {
+   "name": "Ja'Kobe Walter",
+   "team": "TOR",
+   "salary": 3811800
+  },
+  {
+   "name": "Karim López",
+   "team": "MEM",
+   "salary": 3746760
+  },
+  {
+   "name": "Cole Anthony",
+   "team": "MEM",
+   "salary": 3700000
+  },
+  {
+   "name": "Will Riley",
+   "team": "WAS",
+   "salary": 3688320
+  },
+  {
+   "name": "Jaylon Tyson",
+   "team": "CLE",
+   "salary": 3658560
+  },
+  {
+   "name": "Labaron Philon Jr.",
+   "team": "PHI",
+   "salary": 3597120
+  },
+  {
+   "name": "Drake Powell",
+   "team": "BRK",
+   "salary": 3540600
+  },
+  {
+   "name": "Yves Missi",
+   "team": "NOP",
+   "salary": 3512760
+  },
+  {
+   "name": "Zuby Ejiofor",
+   "team": "ATL",
+   "salary": 3453360
+  },
+  {
+   "name": "Dominick Barlow",
+   "team": "PHI",
+   "salary": 3415000
+  },
+  {
+   "name": "Ariel Hukporti",
+   "team": "PHI",
+   "salary": 3400000
+  },
+  {
+   "name": "Asa Newell",
+   "team": "ATL",
+   "salary": 3399480
+  },
+  {
+   "name": "DaRon Holmes",
+   "team": "DEN",
+   "salary": 3372120
+  },
+  {
+   "name": "Cameron Carr",
+   "team": "LAL",
+   "salary": 3315360
+  },
+  {
+   "name": "Mo Bamba",
+   "team": "UTA",
+   "salary": 3286399
+  },
+  {
+   "name": "Nique Clifford",
+   "team": "OKC",
+   "salary": 3263400
+  },
+  {
+   "name": "AJ Johnson",
+   "team": "NOP",
+   "salary": 3237120
+  },
+  {
+   "name": "Sergio de Larrea",
+   "team": "DAL",
+   "salary": 3182280
+  },
+  {
+   "name": "Ron Harper Jr.",
+   "team": "BOS",
+   "salary": 3150752
+  },
+  {
+   "name": "Jase Richardson",
+   "team": "ORL",
+   "salary": 3132360
+  },
+  {
+   "name": "Kyshawn George",
+   "team": "WAS",
+   "salary": 3108000
+  },
+  {
+   "name": "Nassir Little",
+   "team": "PHO",
+   "salary": 3107143
+  },
+  {
+   "name": "Jaylen Clark",
+   "team": "MIN",
+   "salary": 3086420
+  },
+  {
+   "name": "Tarris Reed Jr.",
+   "team": "SAS",
+   "salary": 3076920
+  },
+  {
+   "name": "Ben Saraf",
+   "team": "BRK",
+   "salary": 3028560
+  },
+  {
+   "name": "Tarik Biberovic",
+   "team": "DAL",
+   "salary": 3000000
+  },
+  {
+   "name": "Kyle Filipowski",
+   "team": "UTA",
+   "salary": 3000000
+  },
+  {
+   "name": "Chris Cenac Jr.",
+   "team": "BOS",
+   "salary": 2988120
+  },
+  {
+   "name": "Pacôme Dadiet",
+   "team": "NYK",
+   "salary": 2983680
+  },
+  {
+   "name": "Joshua Jefferson",
+   "team": "BRK",
+   "salary": 2969520
+  },
+  {
+   "name": "Alex Karaban",
+   "team": "SAC",
+   "salary": 2948280
+  },
+  {
+   "name": "Danny Wolf",
+   "team": "BRK",
+   "salary": 2941440
+  },
+  {
+   "name": "Koa Peat",
+   "team": "PHO",
+   "salary": 2926800
+  },
+  {
+   "name": "Hugo González",
+   "team": "BOS",
+   "salary": 2923560
+  },
+  {
+   "name": "Liam McNeeley",
+   "team": "CHO",
+   "salary": 2902080
+  },
+  {
+   "name": "Yanic Konan Niederhäuser",
+   "team": "LAC",
+   "salary": 2880960
+  },
+  {
+   "name": "Ajay Mitchell",
+   "team": "OKC",
+   "salary": 2850000
+  },
+  {
+   "name": "Bones Hyland",
+   "team": "MIN",
+   "salary": 2845883
+  },
+  {
+   "name": "Terrence Shannon Jr.",
+   "team": "MIN",
+   "salary": 2801640
+  },
+  {
+   "name": "Micah Potter",
+   "team": "POR",
+   "salary": 2801346
+  },
+  {
+   "name": "Jericho Sims",
+   "team": "MIL",
+   "salary": 2801346
+  },
+  {
+   "name": "Luka Garza",
+   "team": "BOS",
+   "salary": 2801346
+  },
+  {
+   "name": "Ryan Dunn",
+   "team": "PHO",
+   "salary": 2784240
+  },
+  {
+   "name": "Isaiah Collier",
+   "team": "UTA",
+   "salary": 2763960
+  },
+  {
+   "name": "Baylor Scheierman",
+   "team": "BOS",
+   "salary": 2744040
+  },
+  {
+   "name": "Neemias Queta",
+   "team": "BOS",
+   "salary": 2667944
+  },
+  {
+   "name": "Justin Champagnie",
+   "team": "WAS",
+   "salary": 2667944
+  },
+  {
+   "name": "Vít Krejčí",
+   "team": "POR",
+   "salary": 2667944
+  },
+  {
+   "name": "Jay Huff",
+   "team": "IND",
+   "salary": 2667944
+  },
+  {
+   "name": "Kobe Sanders",
+   "team": "LAC",
+   "salary": 2622139
+  },
+  {
+   "name": "Jamaree Bouyea",
+   "team": "PHO",
+   "salary": 2584539
+  },
+  {
+   "name": "Jamal Cain",
+   "team": "ORL",
+   "salary": 2584539
+  },
+  {
+   "name": "Bryce McGowens",
+   "team": "NOP",
+   "salary": 2584539
+  },
+  {
+   "name": "Jabari Walker",
+   "team": "PHI",
+   "salary": 2584539
+  },
+  {
+   "name": "Dru Smith",
+   "team": "MIA",
+   "salary": 2584539
+  },
+  {
+   "name": "Pete Nance",
+   "team": "MIL",
+   "salary": 2537526
+  },
+  {
+   "name": "Olivier-Maxence Prosper",
+   "team": "MEM",
+   "salary": 3500172
+  },
+  {
+   "name": "Sidy Cissoko",
+   "team": "POR",
+   "salary": 2497812
+  },
+  {
+   "name": "Scotty Pippen Jr.",
+   "team": "MEM",
+   "salary": 2461462
+  },
+  {
+   "name": "Moussa Diabaté",
+   "team": "CHO",
+   "salary": 2461462
+  },
+  {
+   "name": "Jonathan Isaac",
+   "team": "ORL",
+   "salary": 10449421
+  },
+  {
+   "name": "Daeqwon Plowden",
+   "team": "SAC",
+   "salary": 2449421
+  },
+  {
+   "name": "Isaiah Crawford",
+   "team": "HOU",
+   "salary": 2449421
+  },
+  {
+   "name": "Anthony Gill",
+   "team": "WAS",
+   "salary": 2449421
+  },
+  {
+   "name": "Kyle Anderson",
+   "team": "TOR",
+   "salary": 2449421
+  },
+  {
+   "name": "Jordan McLaughlin",
+   "team": "SAS",
+   "salary": 2449421
+  },
+  {
+   "name": "Branden Carlson",
+   "team": "POR",
+   "salary": 2449421
+  },
+  {
+   "name": "Kentavious Caldwell-Pope",
+   "team": "PHI",
+   "salary": 20194392
+  },
+  {
+   "name": "Jevon Carter",
+   "team": "ORL",
+   "salary": 2449421
+  },
+  {
+   "name": "Nikola Vučević",
+   "team": "ORL",
+   "salary": 2449421
+  },
+  {
+   "name": "Jordan Clarkson",
+   "team": "NYK",
+   "salary": 2449421
+  },
+  {
+   "name": "Andre Drummond",
+   "team": "NYK",
+   "salary": 2449421
+  },
+  {
+   "name": "Trey Lyles",
+   "team": "MIN",
+   "salary": 2449421
+  },
+  {
+   "name": "Nick Richards",
+   "team": "MIA",
+   "salary": 2449421
+  },
+  {
+   "name": "Simone Fontecchio",
+   "team": "MIA",
+   "salary": 2449421
+  },
+  {
+   "name": "Matisse Thybulle",
+   "team": "LAL",
+   "salary": 2449421
+  },
+  {
+   "name": "Ziaire Williams",
+   "team": "LAL",
+   "salary": 2449421
+  },
+  {
+   "name": "Kevon Looney",
+   "team": "LAL",
+   "salary": 2449421
+  },
+  {
+   "name": "Larry Nance Jr.",
+   "team": "IND",
+   "salary": 2449421
+  },
+  {
+   "name": "Jae'Sean Tate",
+   "team": "HOU",
+   "salary": 2449421
+  },
+  {
+   "name": "Bogdan Bogdanović",
+   "team": "HOU",
+   "salary": 2449421
+  },
+  {
+   "name": "Gary Payton II",
+   "team": "GSW",
+   "salary": 2449421
+  },
+  {
+   "name": "Charles Bassey",
+   "team": "GSW",
+   "salary": 2449421
+  },
+  {
+   "name": "DeMar DeRozan",
+   "team": "DEN",
+   "salary": 2449421
+  },
+  {
+   "name": "Marvin Bagley III",
+   "team": "DEN",
+   "salary": 2449421
+  },
+  {
+   "name": "Tyus Jones",
+   "team": "DEN",
+   "salary": 2449421
+  },
+  {
+   "name": "Mario Hezonja",
+   "team": "CLE",
+   "salary": 2449421
+  },
+  {
+   "name": "Thomas Bryant",
+   "team": "CLE",
+   "salary": 2449421
+  },
+  {
+   "name": "Mike Conley",
+   "team": "BOS",
+   "salary": 2449421
+  },
+  {
+   "name": "Ben Simmons",
+   "team": "SAC",
+   "salary": 2449421
+  },
+  {
+   "name": "James Wiseman",
+   "team": "NYK",
+   "salary": 2449421
+  },
+  {
+   "name": "Trendon Watford",
+   "team": "NOP",
+   "salary": 2449421
+  },
+  {
+   "name": "Georges Niang",
+   "team": "GSW",
+   "salary": 2449421
+  },
+  {
+   "name": "Brandon Williams",
+   "team": "GSW",
+   "salary": 2449421
+  },
+  {
+   "name": "Cam Spencer",
+   "team": "MEM",
+   "salary": 2411090
+  },
+  {
+   "name": "Justin Edwards",
+   "team": "PHI",
+   "salary": 2411090
+  },
+  {
+   "name": "Tolu Smith",
+   "team": "DET",
+   "salary": 2411090
+  },
+  {
+   "name": "Nae'Qwan Tomlin",
+   "team": "CLE",
+   "salary": 2411090
+  },
+  {
+   "name": "Sion James",
+   "team": "CHO",
+   "salary": 2411090
+  },
+  {
+   "name": "Ryan Kalkbrenner",
+   "team": "CHO",
+   "salary": 2411090
+  },
+  {
+   "name": "Jordan Walsh",
+   "team": "BOS",
+   "salary": 2406205
+  },
+  {
+   "name": "Trayce Jackson-Davis",
+   "team": "TOR",
+   "salary": 2406205
+  },
+  {
+   "name": "GG Jackson II",
+   "team": "MEM",
+   "salary": 2406205
+  },
+  {
+   "name": "Craig Porter Jr.",
+   "team": "CLE",
+   "salary": 2406205
+  },
+  {
+   "name": "Leonard Miller",
+   "team": "CHI",
+   "salary": 2406205
+  },
+  {
+   "name": "Mouhamed Gueye",
+   "team": "ATL",
+   "salary": 2406205
+  },
+  {
+   "name": "Pelle Larsson",
+   "team": "MIA",
+   "salary": 2296271
+  },
+  {
+   "name": "Oso Ighodaro",
+   "team": "PHO",
+   "salary": 2296271
+  },
+  {
+   "name": "Jamal Shead",
+   "team": "TOR",
+   "salary": 2296271
+  },
+  {
+   "name": "Tyler Kolek",
+   "team": "NYK",
+   "salary": 2296271
+  },
+  {
+   "name": "Karlo Matković",
+   "team": "NOP",
+   "salary": 2296271
+  },
+  {
+   "name": "Johnny Furphy",
+   "team": "IND",
+   "salary": 2296271
+  },
+  {
+   "name": "Jamison Battle",
+   "team": "TOR",
+   "salary": 2296271
+  },
+  {
+   "name": "Adem Bona",
+   "team": "PHI",
+   "salary": 2296271
+  },
+  {
+   "name": "Jaylen Wells",
+   "team": "MEM",
+   "salary": 2296271
+  },
+  {
+   "name": "Bronny James",
+   "team": "LAL",
+   "salary": 2296271
+  },
+  {
+   "name": "Mohamed Diawara",
+   "team": "NYK",
+   "salary": 2232143
+  },
+  {
+   "name": "JaVale McGee",
+   "team": "DAL",
+   "salary": 2208856
+  },
+  {
+   "name": "Alijah Martin",
+   "team": "TOR",
+   "salary": 2185116
+  },
+  {
+   "name": "Moussa Cissé",
+   "team": "DAL",
+   "salary": 2185116
+  },
+  {
+   "name": "Rasheer Fleming",
+   "team": "PHO",
+   "salary": 2150917
+  },
+  {
+   "name": "Maxime Raynaud",
+   "team": "SAC",
+   "salary": 2150917
+  },
+  {
+   "name": "Noah Penda",
+   "team": "ORL",
+   "salary": 2150917
+  },
+  {
+   "name": "Micah Peavy",
+   "team": "MEM",
+   "salary": 2150917
+  },
+  {
+   "name": "Adou Thiero",
+   "team": "LAL",
+   "salary": 2150917
+  },
+  {
+   "name": "Johni Broome",
+   "team": "LAC",
+   "salary": 2150917
+  },
+  {
+   "name": "Will Richard",
+   "team": "GSW",
+   "salary": 2150917
+  },
+  {
+   "name": "Chaz Lanier",
+   "team": "DET",
+   "salary": 2150917
+  },
+  {
+   "name": "Tyrese Proctor",
+   "team": "CLE",
+   "salary": 2150917
+  },
+  {
+   "name": "Ryan Nembhard",
+   "team": "CHO",
+   "salary": 2150917
+  },
+  {
+   "name": "Myron Gardner",
+   "team": "MIA",
+   "salary": 2150917
+  },
+  {
+   "name": "Mason Plumlee",
+   "team": "SAC",
+   "salary": 2139724
+  },
+  {
+   "name": "Orlando Robinson",
+   "team": "CHI",
+   "salary": 2125647
+  },
+  {
+   "name": "John Konchar",
+   "team": "MIN",
+   "salary": 2055000
+  },
+  {
+   "name": "Cam Whitmore",
+   "team": "CLE",
+   "salary": 1819437
+  },
+  {
+   "name": "Baba Miller",
+   "team": "LAC",
+   "salary": 1705630
+  },
+  {
+   "name": "Isaiah Evans",
+   "team": "MIN",
+   "salary": 1357763
+  },
+  {
+   "name": "Bogoljub Markovic",
+   "team": "MIL",
+   "salary": 1357763
+  },
+  {
+   "name": "Meleek Thomas",
+   "team": "CLE",
+   "salary": 1357763
+  },
+  {
+   "name": "Emanuel Sharp",
+   "team": "SAC",
+   "salary": 1357763
+  },
+  {
+   "name": "Ryan Conwell",
+   "team": "MIA",
+   "salary": 1357763
+  },
+  {
+   "name": "Henri Veesaar",
+   "team": "ATL",
+   "salary": 1357763
+  },
+  {
+   "name": "Jaden Bradley",
+   "team": "TOR",
+   "salary": 1357763
+  },
+  {
+   "name": "Bruce Thornton",
+   "team": "HOU",
+   "salary": 1357763
+  },
+  {
+   "name": "Trevon Brazile",
+   "team": "DEN",
+   "salary": 1357763
+  },
+  {
+   "name": "Khalifa Diop",
+   "team": "CLE",
+   "salary": 1357763
+  },
+  {
+   "name": "Alpha Diallo",
+   "team": "DEN",
+   "salary": 1357763
+  },
+  {
+   "name": "Olivier-Maxence Prosper",
+   "team": "DAL",
+   "salary": 3500172
+  },
+  {
+   "name": "Haywood Highsmith",
+   "team": "PHO",
+   "salary": 1000000
+  },
+  {
+   "name": "E.J. Liddell",
+   "team": "PHO",
+   "salary": 706898
+  },
+  {
+   "name": "Vasilije Micić",
+   "team": "MIL",
+   "salary": 666667
+  },
+  {
+   "name": "Mamadi Diakite",
+   "team": "MEM",
+   "salary": 464050
+  },
+  {
+   "name": "Ricky Rubio",
+   "team": "CLE",
+   "salary": 424672
+  },
+  {
+   "name": "Didi Louzada",
+   "team": "POR",
+   "salary": 268032
+  },
+  {
+   "name": "Taj Gibson",
+   "team": "NOP",
+   "salary": 148828
+  }
+ ]
+}
