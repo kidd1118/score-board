@@ -111,7 +111,9 @@ afterEach(() => {
 test('shows scoring rules, my six empty slots and both leaderboards', async () => {
   render(<App />);
   expect(await screen.findAllByText('尚未選擇')).toHaveLength(6);
-  expect(screen.getByText('×−2')).toBeInTheDocument();
+  expect(screen.getByText('三分球')).toBeInTheDocument();
+  expect(screen.getAllByText('×−2')).toHaveLength(2); // 失誤、犯規
+  expect(screen.getByText('×−1')).toBeInTheDocument();
   expect(screen.getByText('我的陣容')).toBeInTheDocument();
   expect(screen.getByText('Amy', { selector: 'strong' })).toBeInTheDocument(); // account bar
   expect(await screen.findByText('540')).toBeInTheDocument(); // overall total

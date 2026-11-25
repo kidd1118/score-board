@@ -37,7 +37,20 @@ REQUEST_TIMEOUT = 15
 SLOTS = ["PG", "SG", "SF", "PF", "C", "6TH"]
 # Position letter a player needs for each slot (None = anyone).
 SLOT_POSITION = {"PG": "G", "SG": "G", "SF": "F", "PF": "F", "C": "C", "6TH": None}
-SCORING = {"pts": 2, "reb": 3, "ast": 4, "stl": 5, "blk": 5, "tov": -2}
+SCORING = {
+    "fg2m": 2,   # made two-pointers
+    "fg3m": 3,   # made three-pointers
+    "ftm": 1,    # made free throws
+    "reb": 3,
+    "ast": 4,
+    "stl": 5,
+    "blk": 5,
+    "tov": -2,
+    "pf": -2,    # personal fouls
+    "miss": -1,  # missed field goals and free throws
+}
+# Bump when SCORING changes so settled totals saved under the old rules are recomputed.
+SCORING_VERSION = 3
 
 # Total salary a lineup may carry, using players' real salaries (salaries.json).
 SALARY_CAP = 148_465_000
@@ -71,7 +84,20 @@ class NameTaken(LineupError):
 # ---------- scoring ----------
 
 def fantasy_points(stats):
-    return sum(stats.get(key, 0) * weight for key, weight in SCORING.items())
+    """A player's points never go below 0, however bad the night."""
+    return max(0, round(sum(stats.get(key, 0) * weight for key, weight in SCORING.items()), 1))
+
+
+def scoring_stats(fgm, fga, fg3m, ftm, fta, **counts):
+    """Turn shooting makes/attempts plus counting stats into the SCORING keys."""
+    return {
+        "pts": 2 * (fgm - fg3m) + 3 * fg3m + ftm,
+        "fg2m": fgm - fg3m,
+        "fg3m": fg3m,
+        "ftm": ftm,
+        "miss": (fga - fgm) + (fta - ftm),
+        **counts,
+    }
 
 
 def eligible_slots(position):
@@ -235,7 +261,12 @@ def _fetch_players():
         if not p.get("TEAM_ID"):
             continue
         a = avg_by_id.get(p["PERSON_ID"], {})
-        avg = {key: a.get(key.upper()) or 0 for key in SCORING}
+        g = lambda k: a.get(k) or 0
+        raw = scoring_stats(
+            g("FGM"), g("FGA"), g("FG3M"), g("FTM"), g("FTA"),
+            reb=g("REB"), ast=g("AST"), stl=g("STL"), blk=g("BLK"), tov=g("TOV"), pf=g("PF"),
+        )
+        avg = {k: round(v, 1) for k, v in raw.items()}
         name = f"{p.get('PLAYER_FIRST_NAME', '')} {p.get('PLAYER_LAST_NAME', '')}".strip()
         salary, listed = _salary_for(salaries, name, p.get("TEAM_ABBREVIATION"))
         players.append({
@@ -249,7 +280,7 @@ def _fetch_players():
             "gp": a.get("GP") or 0,
             "min": a.get("MIN") or 0,
             "avg": avg,
-            "avgPoints": round(fantasy_points(avg), 1),
+            "avgPoints": fantasy_points(raw),
         })
     return players
 
@@ -278,12 +309,13 @@ def _fetch_box(game_id):
             s = p.get("statistics", {})
             stats[p["personId"]] = {
                 "played": p.get("played") == "1",
-                "pts": s.get("points", 0),
-                "reb": s.get("reboundsTotal", 0),
-                "ast": s.get("assists", 0),
-                "stl": s.get("steals", 0),
-                "blk": s.get("blocks", 0),
-                "tov": s.get("turnovers", 0),
+                **scoring_stats(
+                    s.get("fieldGoalsMade", 0), s.get("fieldGoalsAttempted", 0),
+                    s.get("threePointersMade", 0),
+                    s.get("freeThrowsMade", 0), s.get("freeThrowsAttempted", 0),
+                    reb=s.get("reboundsTotal", 0), ast=s.get("assists", 0), stl=s.get("steals", 0),
+                    blk=s.get("blocks", 0), tov=s.get("turnovers", 0), pf=s.get("foulsPersonal", 0),
+                ),
             }
     return {"status": game.get("gameStatus"), "players": stats}
 
@@ -373,7 +405,7 @@ def _slot_view(slot, pick, games_by_id, reveal, injuries):
             view["stats"] = stats
             view["points"] = fantasy_points(stats)
         else:
-            view["stats"] = {"played": False, **{k: 0 for k in SCORING}}
+            view["stats"] = {"played": False, "pts": 0, **{k: 0 for k in SCORING}}
     return view
 
 
@@ -390,17 +422,18 @@ def get_lineup(date, key, reveal=True):
     )
     injuries = nba_injuries.statuses_for(date) if upcoming and reveal else None
     slots = [_slot_view(slot, picks.get(slot), games_by_id, reveal, injuries) for slot in SLOTS]
-    total = sum(s["points"] for s in slots)
+    total = round(sum(s["points"] for s in slots), 1)
     salary = sum(_pick_salary(p) for p in picks.values())
 
     picked_games = [games_by_id.get(p["gameId"]) for p in picks.values()]
     final = bool(picked_games) and all(g and g["status"] == FINAL for g in picked_games)
-    if final and entry.get("finalTotal") != total:
+    if final and (entry.get("finalTotal") != total or entry.get("scoringVersion") != SCORING_VERSION):
         with _store_lock:
             data = _load()
             stored = data["lineups"].get(date, {}).get(key)
             if stored:
                 stored["finalTotal"] = total
+                stored["scoringVersion"] = SCORING_VERSION
                 _save(data)
 
     user = data["users"].get(key, {})
@@ -490,7 +523,7 @@ def _day_results(date, entries):
     """{key: (total, final, players)} for every lineup on `date`, settling any that just finished."""
     results = {}
     for key, entry in entries.items():
-        if entry.get("finalTotal") is not None:
+        if entry.get("finalTotal") is not None and entry.get("scoringVersion") == SCORING_VERSION:
             results[key] = (entry["finalTotal"], True, len(entry.get("slots", {})))
         else:
             lineup = get_lineup(date, key)
