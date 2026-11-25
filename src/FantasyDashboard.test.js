@@ -73,6 +73,11 @@ const overall = {
 function respond(url, options = {}) {
   const token = options.headers?.['X-Fantasy-Token'];
   if (url === '/games/') return { date: '2026-11-23', source: 'live', games: [] };
+  if (url === '/fantasy/me' && options.method === 'PATCH') {
+    const { name } = JSON.parse(options.body);
+    if (token !== TOKEN) return [401, { detail: 'bad token' }];
+    return name === 'Bob' ? [409, { detail: '「Bob」已經有人使用' }] : { name };
+  }
   if (url === '/fantasy/me') return token === TOKEN ? { name: 'Amy' } : [401, { detail: 'bad token' }];
   if (url === '/fantasy/users') return { name: JSON.parse(options.body).name, token: TOKEN };
   if (url === '/fantasy/leaderboard') return overall;
@@ -194,4 +199,29 @@ test('the picker shows each player\'s availability and can hide players who are 
   fireEvent.click(screen.getByLabelText('隱藏 Out 球員'));
   expect(screen.queryByText('Big Center')).not.toBeInTheDocument();
   expect(screen.getByText('Jayson Tatum')).toBeInTheDocument(); // questionable players stay
+});
+
+test('a player can change their nickname', async () => {
+  render(<App />);
+  await screen.findAllByRole('button', { name: '選擇球員' });
+  fireEvent.click(screen.getByRole('button', { name: '更改暱稱' }));
+
+  const input = screen.getByLabelText('新暱稱');
+  expect(input).toHaveValue('Amy');
+  expect(screen.getByRole('button', { name: '儲存' })).toBeDisabled(); // unchanged
+
+  fireEvent.change(input, { target: { value: 'Bob' } });
+  fireEvent.click(screen.getByRole('button', { name: '儲存' }));
+  expect(await screen.findByText('「Bob」已經有人使用')).toBeInTheDocument();
+
+  fireEvent.change(input, { target: { value: 'Amelia' } });
+  fireEvent.click(screen.getByRole('button', { name: '儲存' }));
+  expect(await screen.findByText('Amelia', { selector: 'strong' })).toBeInTheDocument();
+
+  const patch = global.fetch.mock.calls.filter(([, o]) => o?.method === 'PATCH').pop();
+  expect(patch[1].headers['X-Fantasy-Token']).toBe(TOKEN);
+  expect(JSON.parse(patch[1].body)).toEqual({ name: 'Amelia' });
+  await waitFor(() =>
+    expect(global.fetch.mock.calls.some(([url]) => url === `/fantasy/${DATE}/lineup/Amelia`)).toBe(true)
+  );
 });

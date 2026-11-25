@@ -349,13 +349,79 @@ function JoinForm({ onJoined }) {
   );
 }
 
-function AccountBar({ me, token, onLogout }) {
+function RenameForm({ me, token, onRenamed, onCancel }) {
+  const [value, setValue] = useState(me);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const unchanged = value.trim() === me;
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!value.trim() || unchanged) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const body = await request('/fantasy/me', {
+        method: 'PATCH',
+        token,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: value.trim() }),
+      });
+      onRenamed(body.name);
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form className="rename" onSubmit={submit}>
+      <input
+        aria-label="新暱稱"
+        maxLength={20}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => e.key === 'Escape' && onCancel()}
+        autoFocus
+      />
+      <button type="submit" disabled={busy || !value.trim() || unchanged}>
+        儲存
+      </button>
+      <button type="button" className="link-button" onClick={onCancel}>
+        取消
+      </button>
+      {error && <div className="error">{error}</div>}
+      <p className="meta">所有陣容與紀錄都會跟著新暱稱，金鑰不變；舊暱稱之後可以被別人使用。</p>
+    </form>
+  );
+}
+
+function AccountBar({ me, token, onLogout, onRenamed }) {
   const [showKey, setShowKey] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  if (renaming) {
+    return (
+      <section className="account">
+        <RenameForm
+          me={me}
+          token={token}
+          onCancel={() => setRenaming(false)}
+          onRenamed={(name) => {
+            setRenaming(false);
+            onRenamed(name);
+          }}
+        />
+      </section>
+    );
+  }
   return (
     <section className="account">
       <span>
         玩家：<strong>{me}</strong>
       </span>
+      <button className="link-button" onClick={() => setRenaming(true)}>
+        更改暱稱
+      </button>
       <button className="link-button" onClick={() => setShowKey(!showKey)}>
         {showKey ? '隱藏金鑰' : '顯示金鑰'}
       </button>
@@ -648,6 +714,14 @@ export default function FantasyDashboard({ date = null, onDateChange }) {
     setViewing(null);
   };
 
+  // The lineup and history reload on their own because they depend on `me`.
+  const renamed = (name) => {
+    setMe(name);
+    setViewing(null);
+    loadDaily();
+    loadOverall();
+  };
+
   const logout = () => {
     if (!window.confirm(`登出後，這台裝置需要金鑰才能再編輯「${me}」的陣容。確定登出？`)) return;
     writeToken(null);
@@ -692,7 +766,7 @@ export default function FantasyDashboard({ date = null, onDateChange }) {
         )}
       </section>
 
-      {me && <AccountBar me={me} token={token} onLogout={logout} />}
+      {me && <AccountBar me={me} token={token} onLogout={logout} onRenamed={renamed} />}
       {!token && <JoinForm onJoined={join} />}
 
       {error && <div className="error">{error}</div>}

@@ -136,6 +136,11 @@ def get_fantasy_me(x_fantasy_token: Optional[str] = Header(None)):
     key = _signed_in(x_fantasy_token)
     return {"name": nba_fantasy.find_user_name(key)}
 
+@app.patch("/fantasy/me")
+def rename_fantasy_me(user: UserIn, x_fantasy_token: Optional[str] = Header(None)):
+    key = _signed_in(x_fantasy_token)
+    return _nba(lambda: nba_fantasy.rename(key, user.name))
+
 @app.get("/fantasy/salary")
 def get_fantasy_salary():
     return nba_fantasy.salary_info()

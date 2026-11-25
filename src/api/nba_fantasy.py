@@ -120,8 +120,8 @@ def user_key(name):
     return " ".join(name.split()).casefold()
 
 
-def register(name):
-    """Create a player and return {name, token}. The token is the only credential."""
+def _clean_name(name):
+    """Collapse whitespace and enforce the nickname rules."""
     name = " ".join((name or "").split())
     if not name:
         raise LineupError("請輸入暱稱")
@@ -129,6 +129,12 @@ def register(name):
         raise LineupError(f"暱稱最多 {NAME_MAX} 個字")
     if any(not ch.isprintable() for ch in name):
         raise LineupError("暱稱不能包含特殊字元")
+    return name
+
+
+def register(name):
+    """Create a player and return {name, token}. The token is the only credential."""
+    name = _clean_name(name)
     key = user_key(name)
     token = secrets.token_urlsafe(18)
     with _store_lock:
@@ -139,6 +145,28 @@ def register(name):
         data["users"][key] = {"name": existing["name"] if existing else name, "token": token}
         _save(data)
     return {"name": data["users"][key]["name"], "token": token}
+
+
+def rename(key, new_name):
+    """Change a player's nickname, keeping their token and every saved lineup. Returns {name}."""
+    new_name = _clean_name(new_name)
+    new_key = user_key(new_name)
+    with _store_lock:
+        data = _load()
+        user = data["users"].get(key)
+        if user is None:
+            raise LineupError("找不到這位玩家")
+        # Changing only capitalization or spacing keeps the same key.
+        if new_key != key:
+            if new_key in data["users"]:
+                raise NameTaken(f"「{data['users'][new_key]['name']}」已經有人使用")
+            data["users"][new_key] = data["users"].pop(key)
+            for entries in data["lineups"].values():
+                if key in entries:
+                    entries[new_key] = entries.pop(key)
+        data["users"][new_key]["name"] = new_name
+        _save(data)
+    return {"name": new_name}
 
 
 def user_for_token(token):
