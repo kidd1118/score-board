@@ -20,8 +20,6 @@ Data is stored in a JSON file.
 """
 import json
 import os
-import re
-import unicodedata
 import secrets
 import threading
 from pathlib import Path
@@ -30,7 +28,9 @@ from nba_api.live.nba.endpoints import boxscore
 from nba_api.stats.endpoints import leaguedashplayerstats, playerindex
 
 import nba_games
+import nba_injuries
 from cache import cached
+from names import name_key
 
 REQUEST_TIMEOUT = 15
 
@@ -165,23 +165,16 @@ def find_user(name):
 
 # ---------- salaries ----------
 
-def _name_key(name):
-    """'Nikola Jokić' / 'nikola jokic' -> 'nikola jokic'; drops punctuation and Jr./II/III suffixes."""
-    plain = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().lower()
-    words = re.sub(r"[^a-z ]", "", plain.replace("-", " ")).split()
-    return " ".join(w for w in words if w not in {"jr", "sr", "ii", "iii", "iv"})
-
-
 def _load_salaries():
     """(rows, season) where rows are (name key, team, salary)."""
     data = json.loads(SALARY_FILE.read_text())
-    rows = [(_name_key(p["name"]), BBREF_TEAMS.get(p["team"], p["team"]), p["salary"]) for p in data["players"]]
+    rows = [(name_key(p["name"]), BBREF_TEAMS.get(p["team"], p["team"]), p["salary"]) for p in data["players"]]
     return rows, data.get("season")
 
 
 def _salary_for(rows, name, team):
     """(salary, listed) for a player on `team`."""
-    key = _name_key(name)
+    key = name_key(name)
     same_name = [(t, salary) for k, t, salary in rows if k == key]
     if same_name:
         # Waived players also carry dead money from old teams; prefer the current team's contract.
@@ -303,23 +296,36 @@ def _games_by_team(date):
 def get_pool(date):
     """Players whose team plays on `date`, best average fantasy points first."""
     by_team = _games_by_team(date)
+    upcoming = any(g["status"] == SCHEDULED for g in by_team.values())
+    injuries = nba_injuries.statuses_for(date) if upcoming else None
     pool = []
     for p in _players():
         game = by_team.get(p["teamId"])
         if not game:
             continue
+        locked = game["status"] != SCHEDULED
         pool.append({
             **p,
             "slots": eligible_slots(p["position"]),
             "game": _game_view(game, p["teamId"]),
-            "locked": game["status"] != SCHEDULED,
+            "locked": locked,
+            # Availability only matters before tip-off.
+            "injury": injuries.get(p["name"], p["team"]) if injuries and not locked else None,
         })
     pool.sort(key=lambda p: p["avgPoints"], reverse=True)
-    return {"date": date, "games": len({p["game"]["id"] for p in pool}), "players": pool}
+    return {
+        "date": date,
+        "games": len({p["game"]["id"] for p in pool}),
+        "players": pool,
+        "injuryReport": nba_injuries.report_info() if injuries else None,
+    }
 
 
-def _slot_view(slot, pick, games_by_id, reveal):
-    empty = {"slot": slot, "player": None, "game": None, "stats": None, "points": 0, "locked": False, "hidden": False}
+def _slot_view(slot, pick, games_by_id, reveal, injuries):
+    empty = {
+        "slot": slot, "player": None, "game": None, "stats": None, "points": 0,
+        "locked": False, "hidden": False, "injury": None,
+    }
     if not pick:
         return empty
     game = games_by_id.get(pick["gameId"])
@@ -331,6 +337,7 @@ def _slot_view(slot, pick, games_by_id, reveal):
         "player": {**{k: pick[k] for k in ("id", "name", "team", "position")}, "salary": _pick_salary(pick)},
         "game": _game_view(game, pick["teamId"]) if game else None,
         "locked": locked,
+        "injury": injuries.get(pick["name"], pick["team"]) if injuries and not locked else None,
     }
     if locked:
         stats = _box(game["id"])["players"].get(pick["id"])
@@ -349,7 +356,12 @@ def get_lineup(date, key, reveal=True):
     entry = data["lineups"].get(date, {}).get(key, {})
     picks = entry.get("slots", {})
     games_by_id = {g["id"]: g for g in nba_games.get_games(date)["games"]} if picks else {}
-    slots = [_slot_view(slot, picks.get(slot), games_by_id, reveal) for slot in SLOTS]
+    # Only look up injuries when a visible pick hasn't tipped off yet.
+    upcoming = any(
+        games_by_id.get(p["gameId"], {}).get("status") == SCHEDULED for p in picks.values()
+    )
+    injuries = nba_injuries.statuses_for(date) if upcoming and reveal else None
+    slots = [_slot_view(slot, picks.get(slot), games_by_id, reveal, injuries) for slot in SLOTS]
     total = sum(s["points"] for s in slots)
     salary = sum(_pick_salary(p) for p in picks.values())
 

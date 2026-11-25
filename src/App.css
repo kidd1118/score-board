@@ -11,6 +11,10 @@
   --on-accent: #ffffff;
   --win: #2f63c6;
   --loss: #d9480f;
+  --status-critical: #c92a2a;
+  --status-serious: #d9480f;
+  --status-warning: #b7791f;
+  --status-good: #2b8a3e;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -27,6 +31,10 @@
     --on-accent: #0b1530;
     --win: #5b8def;
     --loss: #d9622a;
+    --status-critical: #ff6b6b;
+    --status-serious: #ff922b;
+    --status-warning: #fcc419;
+    --status-good: #51cf66;
   }
 }
 
@@ -1206,4 +1214,60 @@ body {
   .fantasy-summary .stat-label {
     font-size: 0.75rem;
   }
+}
+
+/* ---------- player availability ---------- */
+.injury {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: 1px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 7px 3px 6px;
+  border: 1px solid var(--injury-color);
+  border-radius: 999px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.injury::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--injury-color);
+}
+
+.injury-critical {
+  --injury-color: var(--status-critical);
+}
+
+.injury-serious {
+  --injury-color: var(--status-serious);
+}
+
+.injury-warning {
+  --injury-color: var(--status-warning);
+}
+
+.injury-good {
+  --injury-color: var(--status-good);
+}
+
+.injury-reason {
+  font-size: 0.75rem;
+}
+
+.pick-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.picker .injury-source {
+  margin: 8px 0 0;
+  font-size: 0.75rem;
 }

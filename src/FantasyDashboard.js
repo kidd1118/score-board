@@ -75,6 +75,39 @@ export function money(amount) {
 
 const fullMoney = (amount) => `$${amount.toLocaleString('en-US')}`;
 
+// Severity drives the badge color; the label always says the status in words.
+const INJURY_SEVERITY = {
+  OFS: 'critical',
+  OUT: 'critical',
+  DOUBTFUL: 'serious',
+  GTD: 'warning',
+  QUESTIONABLE: 'warning',
+  PROBABLE: 'good',
+};
+const UNAVAILABLE = new Set(['OUT', 'OFS']);
+
+function InjuryBadge({ injury }) {
+  if (!injury) return null;
+  const source = injury.source === 'NBA' ? 'NBA 官方傷兵報告' : 'ESPN';
+  return (
+    <span
+      className={`injury injury-${INJURY_SEVERITY[injury.status] || 'warning'}`}
+      title={`${injury.label}${injury.reason ? `：${injury.reason}` : ''}（${source}）`}
+    >
+      {injury.label}
+    </span>
+  );
+}
+
+function formatReportTime(iso) {
+  // The report's timestamp is Eastern Time without an offset; show it as published.
+  const [date, time] = iso.split('T');
+  const [, month, day] = date.split('-');
+  const [hour, minute] = time.split(':').map(Number);
+  const h12 = hour % 12 || 12;
+  return `${Number(month)}/${Number(day)} ${h12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'} ET`;
+}
+
 const sameName = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
 const lineupUrl = (day, name) => `/fantasy/${day}/lineup/${encodeURIComponent(name)}`;
 
@@ -109,7 +142,10 @@ function SlotCard({ slot, active, editable, onPick, onRemove }) {
       </header>
       {player ? (
         <>
-          <div className="slot-player">{player.name}</div>
+          <div className="slot-player">
+            {player.name} <InjuryBadge injury={slot.injury} />
+          </div>
+          {slot.injury?.reason && <div className="meta injury-reason">{slot.injury.reason}</div>}
           <div className="meta">
             {player.team} · {player.position} · <span title={fullMoney(player.salary)}>{money(player.salary)}</span> ·{' '}
             {gameLabel(game)}
@@ -151,6 +187,7 @@ function PlayerPicker({ slot, pool, pickedIds, budget, saving, onChoose, onClose
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('points');
   const [affordableOnly, setAffordableOnly] = useState(false);
+  const [hideOut, setHideOut] = useState(false);
   const candidates = useMemo(() => {
     const q = query.trim().toLowerCase();
     return pool.players
@@ -158,10 +195,11 @@ function PlayerPicker({ slot, pool, pickedIds, budget, saving, onChoose, onClose
         (p) =>
           p.slots.includes(slot) &&
           (!affordableOnly || p.salary <= budget) &&
+          (!hideOut || !UNAVAILABLE.has(p.injury?.status)) &&
           (!q || p.name.toLowerCase().includes(q) || p.team?.toLowerCase() === q)
       )
       .sort(SORTS[sort].compare);
-  }, [pool, slot, query, sort, affordableOnly, budget]);
+  }, [pool, slot, query, sort, affordableOnly, hideOut, budget]);
 
   return (
     <section className="picker">
@@ -192,6 +230,10 @@ function PlayerPicker({ slot, pool, pickedIds, budget, saving, onChoose, onClose
           <input type="checkbox" checked={affordableOnly} onChange={(e) => setAffordableOnly(e.target.checked)} />
           只顯示薪資內
         </label>
+        <label>
+          <input type="checkbox" checked={hideOut} onChange={(e) => setHideOut(e.target.checked)} />
+          隱藏 Out 球員
+        </label>
       </div>
       <p className="meta">
         這個位置最多可用 <strong title={fullMoney(budget)}>{money(budget)}</strong> · {candidates.length} 位球員
@@ -205,7 +247,10 @@ function PlayerPicker({ slot, pool, pickedIds, budget, saving, onChoose, onClose
             <li key={p.id}>
               <button disabled={p.locked || picked || tooExpensive || saving} onClick={() => onChoose(p.id)}>
                 <span className="pick-main">
-                  <strong>{p.name}</strong>
+                  <span className="pick-name">
+                    <strong>{p.name}</strong> <InjuryBadge injury={p.injury} />
+                  </span>
+                  {p.injury?.reason && <span className="meta injury-reason">{p.injury.reason}</span>}
                   <span className="meta">
                     {p.team} · {p.position} · {gameLabel(p.game)}
                   </span>
@@ -227,6 +272,15 @@ function PlayerPicker({ slot, pool, pickedIds, budget, saving, onChoose, onClose
           );
         })}
       </ul>
+      <p className="meta injury-source">
+        {pool.injuryReport?.official
+          ? `傷兵狀態：NBA 官方傷兵報告（${formatReportTime(pool.injuryReport.official.published)} 更新）${
+              pool.injuryReport.espn ? '，尚未列入報告的球隊以 ESPN 補充' : ''
+            }`
+          : pool.injuryReport?.espn
+            ? '傷兵狀態：ESPN（無法取得 NBA 官方傷兵報告）'
+            : '目前無法取得傷兵狀態'}
+      </p>
     </section>
   );
 }

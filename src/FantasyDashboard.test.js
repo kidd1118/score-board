@@ -20,10 +20,12 @@ const emptyLineup = {
 const pool = {
   date: DATE,
   games: 1,
+  injuryReport: { official: { published: '2026-11-25T17:30:00', url: 'https://example.com/report.pdf' }, espn: true },
   players: [
     {
       id: 1, name: 'Jayson Tatum', team: 'BOS', position: 'F-G', slots: ['PG', 'SG', 'SF', 'PF', '6TH'],
       salary: 58456566, salaryListed: true,
+      injury: { status: 'QUESTIONABLE', label: 'Questionable', reason: 'Right Knee Inflammation', source: 'NBA' },
       gp: 15, avg: { pts: 26, reb: 7, ast: 6, stl: 1, blk: 1, tov: 3 }, avgPoints: 109, game, locked: false,
     },
     {
@@ -34,6 +36,7 @@ const pool = {
     {
       id: 3, name: 'Big Center', team: 'BOS', position: 'C', slots: ['C', '6TH'],
       salary: 30000000, salaryListed: true,
+      injury: { status: 'OUT', label: 'Out', reason: 'Left Calf Strain', source: 'ESPN' },
       gp: 12, avg: { pts: 8, reb: 10, ast: 1, stl: 0, blk: 2, tov: 1 }, avgPoints: 60, game, locked: false,
     },
   ],
@@ -175,4 +178,20 @@ test('players over the remaining salary cannot be picked', async () => {
 
   fireEvent.click(screen.getByLabelText('只顯示薪資內'));
   expect(screen.queryByText('Jayson Tatum')).not.toBeInTheDocument();
+});
+
+test('the picker shows each player\'s availability and can hide players who are out', async () => {
+  render(<App />);
+  const pickButtons = await screen.findAllByRole('button', { name: '選擇球員' });
+  fireEvent.click(pickButtons[5]); // 6TH: anyone
+
+  const questionable = await screen.findByText('Questionable');
+  expect(questionable).toHaveAttribute('title', 'Questionable：Right Knee Inflammation（NBA 官方傷兵報告）');
+  expect(screen.getByText('Right Knee Inflammation')).toBeInTheDocument();
+  expect(screen.getByText('Out')).toBeInTheDocument();
+  expect(screen.getByText(/NBA 官方傷兵報告（11\/25 5:30 PM ET 更新）/)).toBeInTheDocument();
+
+  fireEvent.click(screen.getByLabelText('隱藏 Out 球員'));
+  expect(screen.queryByText('Big Center')).not.toBeInTheDocument();
+  expect(screen.getByText('Jayson Tatum')).toBeInTheDocument(); // questionable players stay
 });
