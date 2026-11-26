@@ -256,6 +256,16 @@ cd src/api
 - **總排行榜**：累計所有**已結算**日子的總積分並排名，另外列出參加天數、平均、單日最佳與單日冠軍次數（當天至少兩人參加，且所有人都結算後才算）
 - 點排行榜上的玩家可以查看該玩家當天的陣容。**別人還沒開賽的球員不會公開**，只顯示「已選擇，開賽後公開」，避免照抄；自己的陣容一律看得到
 
+### 當日球員積分榜
+
+列出所選日期**所有出賽球員**的積分前 10 名，不限有沒有被選入陣容，可以看看當天誰最值得選。
+
+- 每位球員顯示球隊、對手、比賽狀態和數據列，積分依上面的積分規則計算（最低 0 分）
+- **被選**：有幾位玩家選了這位球員，游標移到數字上會列出玩家暱稱。只有已開賽的球員才會上榜，所以不會洩漏還沒公開的陣容
+- 你陣容裡的球員會標上「你的球員」
+- 同分同名次；第 10 名同分時全部列出，所以可能超過 10 人
+- 比賽進行中每 30 秒自動更新；還沒開賽的比賽不計入，下方會註明還有幾場沒開賽
+
 ### 資料儲存
 
 所有玩家與陣容存在後端的 `src/api/data/fantasy.json`（已加入 `.gitignore`），要換位置可以設定環境變數 `FANTASY_DATA_FILE`。改成多人版之前存下的陣容會歸到暱稱「玩家1」，第一個用「玩家1」加入的人會接手這些紀錄。
@@ -307,6 +317,54 @@ npm start
 
 打開 <http://localhost:3000>。前端對 API 的請求會透過 `package.json` 裡的 `proxy` 轉到 `http://localhost:8000`，所以**後端必須先啟動**，否則頁面會顯示無法取得資料。
 
+## 固定網址（Tailscale Funnel）
+
+讓其他人從網路上連進來，網址固定為 `https://<電腦名稱>.<tailnet 名稱>.ts.net`。網址綁的是這台電腦在 Tailscale 裡的名稱，跟 IP 無關，所以換網路、IP 變了都照樣連得上。不用設定路由器，HTTPS 憑證也會自動處理。
+
+這個模式由後端同時提供網頁和 API，整個網站只用一個 port（預設 **8080**），不會和開發用的 8000、3000 衝突。
+
+### 第一次設定
+
+1. 安裝並登入 Tailscale（需要一個 Tailscale 帳號，個人使用免費）：
+
+   ```bash
+   brew install tailscale
+   sudo brew services start tailscale   # 背景執行，開機自動啟動
+   tailscale up                          # 會給一個網址，用瀏覽器登入
+   ```
+
+   也可以從 <https://tailscale.com/download> 安裝 Mac App，`scripts/serve.sh` 兩種都找得到。
+
+2. （選擇性）把電腦名稱改成好記的名字，網址會跟著變，例如 `https://nba.<tailnet 名稱>.ts.net`：
+
+   ```bash
+   tailscale set --hostname=nba
+   ```
+
+3. 第一次開啟 Funnel 時，終端機會出現一個連結，要你在 Tailscale 管理頁面同意開啟 **HTTPS** 和 **Funnel**。打開連結按同意後，再執行一次下面的啟動指令
+
+### 啟動
+
+```bash
+scripts/serve.sh
+```
+
+會依序：建置前端（`npm run build`）→ 開啟 Funnel → 在 8080 啟動後端。最後印出的 `tailscale funnel status` 就是公開網址。
+
+- 前端沒有改過時，可以用 `scripts/serve.sh --no-build` 省掉建置
+- 換 port：`PORT=9000 scripts/serve.sh`
+- 第一次開啟後，DNS 可能要幾分鐘才生效
+- 沒有安裝 Tailscale 時，腳本只會在本機啟動（<http://localhost:8080>）
+
+### 要注意的事
+
+- **電腦要開著**：網站跑在這台 Mac 上。睡眠、關機或停掉 `serve.sh`，網站就連不上；網址不會變，重新執行 `scripts/serve.sh` 就恢復
+- **Funnel 會一直開著**：停掉 `serve.sh` 後 Funnel 設定仍然保留（重開機也是），只是連進來會看到錯誤頁。要完全關閉公開網址：`tailscale funnel reset`
+- **任何人都能進來**：知道網址的人都能加入遊戲。金鑰經由 HTTPS 傳送，但仍不是正式的帳號系統
+- **NBA 請求量會變多**：玩家越多、同時開的分頁越多，越容易被 NBA 暫時封鎖（見「常見問題」）
+- **改了程式要重新啟動**：公開網址提供的是 `build/` 裡的檔案，改了前端要重新執行 `scripts/serve.sh`（不加 `--no-build`）；這個模式的後端也不會自動重新載入
+- **資料是同一份**：開發模式和這個模式都讀寫 `src/api/data/fantasy.json`
+
 ## API
 
 | 路徑 | 說明 |
@@ -326,6 +384,7 @@ npm start
 | `PUT /fantasy/{date}/lineup` | 儲存自己的陣容（需 `X-Fantasy-Token`），body 為 `{"slots": {"PG": 球員ID, ..., "6TH": null}}`；違反規則（含超過薪資上限）回傳 400 |
 | `GET /fantasy/{date}/pool` | 當天可選的球員名單（含可打的位置、本季平均、薪水與傷兵狀態 `injury`；`injuryReport` 為官方報告的更新時間） |
 | `GET /fantasy/{date}/leaderboard` | 當日排行榜 |
+| `GET /fantasy/{date}/top` | 當日所有出賽球員的積分前 10 名（含數據、對手與 `pickedBy` 選了該球員的玩家） |
 | `GET /fantasy/leaderboard` | 總排行榜（只計已結算的日子） |
 | `GET /fantasy/salary` | 薪資上限、薪資資料的球季與未列名球員的薪資 |
 | `GET /fantasy/history/{name}` | 指定玩家所有有陣容的日期、積分與名次 |
@@ -340,7 +399,11 @@ npm run build     # 建置正式版到 build/
 ## 常見問題
 
 - **後端啟動時出現 `ModuleNotFoundError: No module named 'pypdf'`**：拉了新版程式碼後要重新安裝套件：`.venv/bin/pip install -r requirements.txt`（解析官方傷兵報告 PDF 需要 pypdf）。
-- **頁面顯示「無法取得…資料」、終端機出現 `Proxy error ... ECONNREFUSED`**：後端沒有啟動，照上面步驟啟動後端後重新整理。
+- **出現「NBA 伺服器拒絕連線或沒有回傳資料」（舊版是 `Expecting value: line 1 column 1 (char 0)`）**：NBA 的伺服器暫時封鎖了這台電腦的 IP，通常是短時間內請求太多（例如很多分頁同時開著、比賽中一直自動更新）。封鎖會自己解除，等一段時間即可。這段期間：
+  - 即時比分和 box score（`cdn.nba.com`）取不到時，後端會改用 NBA stats API（`stats.nba.com`），比分約 1 分鐘更新一次，比賽的領先球員不會顯示
+  - 失敗後 60 秒內不會再向同一個來源請求；之前取得的資料會繼續顯示
+  - 兩個來源都被封鎖時才會出現這個錯誤。少開幾個分頁可以讓封鎖早點解除
+- **頁面顯示「連不上後端伺服器」（舊版是 `Unexpected token 'P', "Proxy erro"... is not valid JSON`）、終端機出現 `Proxy error ... ECONNREFUSED`**：後端沒有啟動或已經停止。開發模式照上面步驟啟動後端；用固定網址時重新執行 `scripts/serve.sh --no-build`。啟動後重新整理頁面。
 - **後端回傳 502 `NBA API request failed`**：NBA 官方網站連線失敗或逾時（後端已自動重試一次）。NBA 會封鎖部分網路（例如雲端主機、某些 VPN），請換個網路再試。
 - **比賽資料沒有馬上更新**：後端會暫存結果以減少對 NBA 的請求——今天的即時比分 15 秒、還有比賽沒打完的日期 60 秒、全部打完的日期 6 小時。重新啟動後端即可清除。
 - **選「今天」看到的日期比台灣早一天**：這是正常的，日期依美國當地日期計算，台灣上午到下午之間通常會差一天。

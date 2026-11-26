@@ -1174,6 +1174,30 @@ body {
   margin: 0;
 }
 
+.boards .overall {
+  grid-column: 1 / -1;
+}
+
+.top-players td {
+  vertical-align: top;
+}
+
+.top-players tr.current {
+  background: var(--bg);
+}
+
+.mine-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  vertical-align: 1px;
+}
+
 .board tbody tr {
   cursor: pointer;
 }

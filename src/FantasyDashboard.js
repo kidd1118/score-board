@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { readJson } from './readJson';
 import DateStrip from './DateStrip';
 
 const SLOT_LABELS = { PG: '控球後衛', SG: '得分後衛', SF: '小前鋒', PF: '大前鋒', C: '中鋒', '6TH': '第六人' };
@@ -54,13 +55,7 @@ async function request(url, { token, headers, ...options } = {}) {
     ...options,
     headers: { ...headers, ...(token ? { 'X-Fantasy-Token': token } : {}) },
   });
-  const body = await res.json();
-  if (!res.ok) {
-    const error = new Error(body.detail || res.statusText);
-    error.status = res.status;
-    throw error;
-  }
-  return body;
+  return readJson(res);
 }
 
 const SORTS = {
@@ -486,7 +481,7 @@ function DailyBoard({ board, me, viewing, onView }) {
 
 function OverallBoard({ board, me, viewing, onView }) {
   return (
-    <section className="standings board">
+    <section className="standings board overall">
       <h3>總排行榜</h3>
       {!board ? (
         <div className="empty">載入中…</div>
@@ -526,6 +521,63 @@ function OverallBoard({ board, me, viewing, onView }) {
         </div>
       )}
       <p className="meta">只計入已結算的日子，依總積分排名；單日冠軍需當天至少兩人參加 · 點選玩家查看該玩家這天的陣容</p>
+    </section>
+  );
+}
+
+function TopPlayers({ top, me }) {
+  let body;
+  if (!top) body = <div className="empty">載入中…</div>;
+  else if (top.games === 0) body = <div className="empty">這天沒有比賽</div>;
+  else if (top.players.length === 0) body = <div className="empty">比賽開始後才會有球員積分</div>;
+  else
+    body = (
+      <div className="table-wrap">
+        <table className="data-table games-table">
+          <thead>
+            <tr>
+              <th>名次</th>
+              <th>球員</th>
+              <th>被選</th>
+              <th>積分</th>
+            </tr>
+          </thead>
+          <tbody>
+            {top.players.map((p) => {
+              const mine = p.pickedBy.some((name) => sameName(name, me));
+              return (
+                <tr key={p.id} className={mine ? 'current' : ''}>
+                  <td>{p.rank}</td>
+                  <td>
+                    <div>
+                      {p.name}
+                      {mine && <span className="mine-tag">你的球員</span>}
+                    </div>
+                    <div className="meta">
+                      {p.team} · {gameLabel(p.game)}
+                    </div>
+                    <div className="meta">{statLine(p.stats)}</div>
+                  </td>
+                  <td title={p.pickedBy.join('、') || undefined}>{p.pickedBy.length ? `${p.pickedBy.length} 人` : '–'}</td>
+                  <td>
+                    <strong>{p.points}</strong>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  return (
+    <section className="standings top-players">
+      <h3>當日球員積分榜 · 前 10 名</h3>
+      {body}
+      <p className="meta">
+        所有出賽球員依積分規則排名，不限有被選入陣容的球員；同分同名次
+        {top?.live && `；比賽進行中，每 ${REFRESH_MS / 1000} 秒更新`}
+        {top && top.started < top.games && `；${top.games - top.started} 場還沒開賽`}
+      </p>
     </section>
   );
 }
@@ -574,6 +626,7 @@ export default function FantasyDashboard({ date = null, onDateChange }) {
   const [pool, setPool] = useState(null);
   const [daily, setDaily] = useState(null);
   const [overall, setOverall] = useState(null);
+  const [top, setTop] = useState(null);
   const [history, setHistory] = useState(null);
   const [activeSlot, setActiveSlot] = useState(null);
   const [error, setError] = useState(null);
@@ -631,6 +684,13 @@ export default function FantasyDashboard({ date = null, onDateChange }) {
       .catch(() => {});
   }, [day]);
 
+  const loadTop = useCallback(() => {
+    if (!day) return;
+    request(`/fantasy/${day}/top`)
+      .then((body) => body.date === day && setTop(body))
+      .catch(() => {});
+  }, [day]);
+
   const loadOverall = useCallback(() => {
     request('/fantasy/leaderboard')
       .then(setOverall)
@@ -658,6 +718,18 @@ export default function FantasyDashboard({ date = null, onDateChange }) {
     setDaily(null);
     loadDaily();
   }, [loadDaily]);
+
+  useEffect(() => {
+    setTop(null);
+    loadTop();
+  }, [loadTop]);
+
+  // Every game of the day counts here, not only the ones in the lineup shown.
+  useEffect(() => {
+    if (!top?.live) return undefined;
+    const id = setInterval(loadTop, REFRESH_MS);
+    return () => clearInterval(id);
+  }, [top?.live, loadTop]);
 
   useEffect(() => {
     loadOverall();
@@ -862,6 +934,7 @@ export default function FantasyDashboard({ date = null, onDateChange }) {
 
       <div className="boards">
         <DailyBoard board={daily} me={me} viewing={target} onView={view} />
+        <TopPlayers top={top} me={me} />
         <OverallBoard board={overall} me={me} viewing={target} onView={view} />
       </div>
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { readJson } from './readJson';
 import MarginChart from './MarginChart';
 
 const CONFERENCES = [
@@ -38,8 +39,7 @@ function useFetch(url) {
     setState({ data: null, error: null });
     fetch(url)
       .then(async (res) => {
-        const body = await res.json();
-        if (!res.ok) throw new Error(body.detail || res.statusText);
+        const body = await readJson(res);
         if (!cancelled) setState({ data: body, error: null });
       })
       .catch((e) => !cancelled && setState({ data: null, error: e.message }));

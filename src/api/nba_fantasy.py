@@ -22,14 +22,16 @@ import json
 import os
 import secrets
 import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from nba_api.live.nba.endpoints import boxscore
-from nba_api.stats.endpoints import leaguedashplayerstats, playerindex
+from nba_api.stats.endpoints import boxscoretraditionalv3, leaguedashplayerstats, playerindex
 
 import nba_games
 import nba_injuries
-from cache import cached
+from cache import ERROR_BACKOFF, cached, with_retry
 from names import name_key
 
 REQUEST_TIMEOUT = 15
@@ -63,8 +65,9 @@ BBREF_TEAMS = {"BRK": "BKN", "CHO": "CHA", "PHO": "PHX"}
 
 SCHEDULED, LIVE, FINAL = 1, 2, 3
 PLAYERS_TTL = 6 * 60 * 60
-LIVE_BOX_TTL = 15
+LIVE_BOX_TTL = 30  # matches the page's refresh, so each refresh asks NBA at most once
 FINAL_BOX_TTL = 6 * 60 * 60
+TOP_PLAYERS = 10
 
 NAME_MAX = 20
 LEGACY_NAME = "玩家1"  # owner of lineups saved before the game was multiplayer
@@ -301,14 +304,20 @@ def _money(amount):
     return f"${amount:,}"
 
 
-def _fetch_box(game_id):
-    game = boxscore.BoxScore(game_id, timeout=REQUEST_TIMEOUT).get_dict()["game"]
+def _box_players(teams, played):
+    """Stats and names from either box score source; both use the same field names."""
     stats = {}
-    for side in ("homeTeam", "awayTeam"):
-        for p in game[side].get("players", []):
+    people = {}
+    for team in teams:
+        for p in team.get("players", []):
             s = p.get("statistics", {})
+            people[p["personId"]] = {
+                "name": p.get("name") or f"{p.get('firstName', '')} {p.get('familyName', '')}".strip(),
+                "team": team.get("teamTricode"),
+                "position": p.get("position") or "",
+            }
             stats[p["personId"]] = {
-                "played": p.get("played") == "1",
+                "played": played(p),
                 **scoring_stats(
                     s.get("fieldGoalsMade", 0), s.get("fieldGoalsAttempted", 0),
                     s.get("threePointersMade", 0),
@@ -317,14 +326,46 @@ def _fetch_box(game_id):
                     blk=s.get("blocks", 0), tov=s.get("turnovers", 0), pf=s.get("foulsPersonal", 0),
                 ),
             }
-    return {"status": game.get("gameStatus"), "players": stats}
+    return stats, people
 
 
-def _box(game_id):
+def _fetch_live_box(game_id):
+    game = boxscore.BoxScore(game_id, timeout=REQUEST_TIMEOUT).get_dict()["game"]
+    stats, people = _box_players([game["homeTeam"], game["awayTeam"]], lambda p: p.get("played") == "1")
+    return {"status": game.get("gameStatus"), "players": stats, "people": people}
+
+
+def _fetch_stats_box(game_id, status):
+    box = boxscoretraditionalv3.BoxScoreTraditionalV3(
+        game_id=game_id, timeout=REQUEST_TIMEOUT
+    ).get_dict()["boxScoreTraditional"]
+    played = lambda p: (p.get("statistics", {}).get("minutes") or "0:00") not in ("0:00", "00:00")
+    stats, people = _box_players([box["homeTeam"], box["awayTeam"]], played)
+    return {"status": status, "players": stats, "people": people}
+
+
+_cdn_down_until = 0.0
+
+
+def _fetch_box(game):
+    """Live box score from cdn.nba.com, or the stats API's when the CDN refuses us.
+
+    After a CDN failure, skip it for ERROR_BACKOFF seconds instead of trying every game.
+    """
+    global _cdn_down_until
+    if time.monotonic() >= _cdn_down_until:
+        try:
+            return with_retry(lambda: _fetch_live_box(game["id"]))
+        except Exception:
+            _cdn_down_until = time.monotonic() + ERROR_BACKOFF
+    return _fetch_stats_box(game["id"], game["status"])
+
+
+def _box(game):
     return cached(
-        ("box", game_id),
+        ("box", game["id"]),
         lambda box: FINAL_BOX_TTL if box["status"] == FINAL else LIVE_BOX_TTL,
-        lambda: _fetch_box(game_id),
+        lambda: _fetch_box(game),
     )
 
 
@@ -400,7 +441,7 @@ def _slot_view(slot, pick, games_by_id, reveal, injuries):
         "injury": injuries.get(pick["name"], pick["team"]) if injuries and not locked else None,
     }
     if locked:
-        stats = _box(game["id"])["players"].get(pick["id"])
+        stats = _box(game)["players"].get(pick["id"])
         if stats:
             view["stats"] = stats
             view["points"] = fantasy_points(stats)
@@ -570,6 +611,57 @@ def get_leaderboard():
     ]
     rows.sort(key=lambda r: (-r["total"], -r["average"], r["player"].casefold()))
     return {"entries": _rank(rows, lambda r: r["total"])}
+
+
+def get_top_players(date, limit=TOP_PLAYERS):
+    """The day's best fantasy scorers across every game, not just picked players.
+
+    Ties at the cut-off are all kept. Only games that have tipped off count, so
+    showing who picked each player never reveals a hidden pick.
+    """
+    games = nba_games.get_games(date)["games"]
+    started = [g for g in games if g["status"] != SCHEDULED]
+    # The first box alone, so a blocked CDN is noticed once rather than by every thread.
+    boxes = [_box(g) for g in started[:1]]
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        boxes += pool.map(_box, started[1:])
+
+    with _store_lock:
+        data = _load()
+    picked_by = {}
+    for key, entry in data["lineups"].get(date, {}).items():
+        name = data["users"].get(key, {}).get("name", key)
+        for pick in entry.get("slots", {}).values():
+            picked_by.setdefault(pick["id"], []).append(name)
+
+    rows = []
+    for game, box in zip(started, boxes):
+        for pid, stats in box["players"].items():
+            if not stats["played"]:
+                continue
+            person = box.get("people", {}).get(pid, {})
+            rows.append({
+                "id": pid,
+                "name": person.get("name", str(pid)),
+                "team": person.get("team"),
+                "position": person.get("position", ""),
+                "game": _game_view(game, next(
+                    (game[s]["id"] for s in ("home", "away") if game[s].get("tricode") == person.get("team")),
+                    None,
+                )),
+                "stats": stats,
+                "points": fantasy_points(stats),
+                "pickedBy": sorted(picked_by.get(pid, []), key=str.casefold),
+            })
+    rows.sort(key=lambda r: (-r["points"], r["name"].casefold()))
+    ranked = _rank(rows, lambda r: r["points"])
+    return {
+        "date": date,
+        "games": len(games),
+        "started": len(started),
+        "live": any(g["status"] == LIVE for g in started),
+        "players": [r for r in ranked if r["rank"] <= limit],
+    }
 
 
 def get_history(key):

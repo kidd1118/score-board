@@ -70,6 +70,18 @@ const overall = {
   entries: [{ player: 'Bob', days: 3, total: 540, average: 180, best: 220, wins: 2, rank: 1 }],
 };
 
+const topStats = (pts) => ({ played: true, pts, fg2m: 0, fg3m: 0, ftm: 0, miss: 0, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0 });
+const top = {
+  date: DATE,
+  games: 3,
+  started: 2,
+  live: false,
+  players: [
+    { id: 1, rank: 1, name: 'Luka Doncic', team: 'LAL', position: 'G', game: { ...game, status: 3, statusText: 'Final' }, stats: topStats(41), points: 88, pickedBy: ['Amy', 'Bob'] },
+    { id: 2, rank: 2, name: 'Jalen Brunson', team: 'NYK', position: 'G', game: { ...game, status: 3, statusText: 'Final' }, stats: topStats(30), points: 70, pickedBy: [] },
+  ],
+};
+
 function respond(url, options = {}) {
   const token = options.headers?.['X-Fantasy-Token'];
   if (url === '/games/') return { date: '2026-11-23', source: 'live', games: [] };
@@ -85,6 +97,7 @@ function respond(url, options = {}) {
   if (url.startsWith('/fantasy/history/')) return { history: [] };
   if (url.endsWith('/leaderboard')) return daily;
   if (url.endsWith('/pool')) return pool;
+  if (url.endsWith('/top')) return top;
   if (options.method === 'PUT') return token === TOKEN ? savedLineup : [401, { detail: 'no token' }];
   if (url.endsWith('/lineup/Bob')) return bobLineup;
   return currentLineup;
@@ -226,4 +239,16 @@ test('a player can change their nickname', async () => {
   await waitFor(() =>
     expect(global.fetch.mock.calls.some(([url]) => url === `/fantasy/${DATE}/lineup/Amelia`)).toBe(true)
   );
+});
+
+test("lists the day's top fantasy scorers and marks my players", async () => {
+  render(<App />);
+  const board = (await screen.findByText('當日球員積分榜 · 前 10 名')).closest('section');
+  const luka = (await within(board).findByText('Luka Doncic')).closest('tr');
+  expect(within(luka).getByText('你的球員')).toBeInTheDocument();
+  expect(within(luka).getByText('2 人')).toHaveAttribute('title', 'Amy、Bob');
+  expect(within(luka).getByText('88')).toBeInTheDocument();
+  const brunson = within(board).getByText('Jalen Brunson').closest('tr');
+  expect(within(brunson).queryByText('你的球員')).not.toBeInTheDocument();
+  expect(within(board).getByText(/1 場還沒開賽/)).toBeInTheDocument();
 });

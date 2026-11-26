@@ -1,10 +1,11 @@
 """Fetch NBA games and normalize them into one shape for the dashboard.
 
 Today's games come from the live scoreboard (real-time scores, clock, leaders).
-Any other date comes from the stats ScoreboardV2 endpoint.
+Any other date comes from the stats ScoreboardV2 endpoint, which also stands in
+for today when the live scoreboard (cdn.nba.com) is unreachable.
 """
 import re
-from datetime import date as date_cls, datetime, timezone
+from datetime import date as date_cls, datetime, timedelta, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
 
@@ -127,8 +128,13 @@ def _fetch_games_by_date(game_date: str):
     ).get_normalized_dict()
     lines = {(l["GAME_ID"], l["TEAM_ID"]): l for l in data.get("LineScore", [])}
     games = []
+    seen = set()
     for h in sorted(data.get("GameHeader", []), key=lambda h: h.get("GAME_SEQUENCE") or 0):
         gid = h["GAME_ID"]
+        # The stats API sometimes repeats a game's header row.
+        if gid in seen:
+            continue
+        seen.add(gid)
         games.append({
             "id": gid,
             "status": h.get("GAME_STATUS_ID"),
@@ -149,14 +155,18 @@ def get_games_by_date(game_date: str):
     return cached(("date", game_date), _day_ttl, lambda: _fetch_games_by_date(game_date))
 
 
+def _board_date():
+    """Best guess at the live board's date: the NBA keeps showing last night's games
+    into the early morning US Eastern time."""
+    return (datetime.now(EASTERN) - timedelta(hours=6)).date().isoformat()
+
+
 def get_games(game_date: Optional[str] = None):
     """Games for a date (YYYY-MM-DD, already validated). Uses the live feed for the live board's date."""
     try:
         live = get_live_games()
     except Exception:
-        if not game_date:
-            raise
         live = None
     if live and (not game_date or game_date == live["date"]):
         return live
-    return get_games_by_date(game_date)
+    return get_games_by_date(game_date or _board_date())

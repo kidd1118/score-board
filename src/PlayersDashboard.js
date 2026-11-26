@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { readJson } from './readJson';
 import SeasonChart from './SeasonChart';
 
 const MAX_RESULTS = 100;
@@ -78,8 +79,7 @@ function PlayerProfile({ playerId }) {
     setError(null);
     fetch(`/player/${playerId}/profile`)
       .then(async (res) => {
-        const body = await res.json();
-        if (!res.ok) throw new Error(body.detail || res.statusText);
+        const body = await readJson(res);
         if (!cancelled) setProfile(body);
       })
       .catch((e) => !cancelled && setError(e.message));
@@ -198,8 +198,7 @@ export default function PlayersDashboard({ selectedId, onSelect }) {
   useEffect(() => {
     fetch('/player/')
       .then(async (res) => {
-        const body = await res.json();
-        if (!res.ok) throw new Error(body.detail || res.statusText);
+        const body = await readJson(res);
         setPlayers([...body.players].sort((a, b) => a.full_name.localeCompare(b.full_name)));
       })
       .catch((e) => setError(e.message));

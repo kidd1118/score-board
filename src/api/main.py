@@ -1,6 +1,9 @@
 import datetime as dt
+import os
+from pathlib import Path
 
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.staticfiles import StaticFiles
 from typing import Dict, Optional, Union
 
 from pydantic import BaseModel
@@ -8,12 +11,13 @@ import nba_teams
 import nba_players
 import nba_games
 import nba_fantasy
+from cache import describe
 
 app = FastAPI()
 
-@app.get("/")
-def root():
-    return {"message": "Hello World"}
+# `npm run build` output. When it exists the backend also serves the site itself,
+# so the whole app runs on one port (see scripts/serve.sh).
+BUILD_DIR = Path(os.environ.get("FRONTEND_BUILD_DIR", Path(__file__).resolve().parents[2] / "build"))
 
 @app.get("/items/{item_id}")
 def read_item(item_id: int, q: Union[str, None] = None):
@@ -29,14 +33,14 @@ def get_standings():
     try:
         return nba_teams.get_standings()
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"NBA API request failed: {e}")
+        raise HTTPException(status_code=502, detail=describe(e))
 
 @app.get("/team/{team_id}/profile")
 def get_team_profile(team_id: int):
     try:
         profile = nba_teams.get_team_profile(team_id)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"NBA API request failed: {e}")
+        raise HTTPException(status_code=502, detail=describe(e))
     if profile is None:
         raise HTTPException(status_code=404, detail="team not found")
     return profile
@@ -60,7 +64,7 @@ def get_player_profile(player_id: int):
     try:
         profile = nba_players.get_player_profile(player_id)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"NBA API request failed: {e}")
+        raise HTTPException(status_code=502, detail=describe(e))
     if profile is None:
         raise HTTPException(status_code=404, detail="player not found")
     return profile
@@ -81,7 +85,7 @@ def get_games(date: Union[str, None] = None):
     try:
         return nba_games.get_games(date)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"NBA API request failed: {e}")
+        raise HTTPException(status_code=502, detail=describe(e))
 
 
 def _check_date(date: str) -> str:
@@ -109,7 +113,7 @@ def _nba(fetch):
     except nba_fantasy.LineupError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"NBA API request failed: {e}")
+        raise HTTPException(status_code=502, detail=describe(e))
 
 
 def _fantasy_user(name: str):
@@ -164,6 +168,11 @@ def get_fantasy_daily_leaderboard(date: str):
     date = _check_date(date)
     return _nba(lambda: nba_fantasy.get_daily_leaderboard(date))
 
+@app.get("/fantasy/{date}/top")
+def get_fantasy_top_players(date: str):
+    date = _check_date(date)
+    return _nba(lambda: nba_fantasy.get_top_players(date))
+
 # Anyone can look; picks whose game hasn't started are only shown to their owner.
 @app.get("/fantasy/{date}/lineup/{name}")
 def get_fantasy_lineup(date: str, name: str, x_fantasy_token: Optional[str] = Header(None)):
@@ -177,3 +186,13 @@ def save_fantasy_lineup(date: str, lineup: LineupIn, x_fantasy_token: Optional[s
     date = _check_date(date)
     key = _signed_in(x_fantasy_token)
     return _nba(lambda: nba_fantasy.save_lineup(date, key, lineup.slots))
+
+
+
+# Declared last so every API route above wins over a file with the same path.
+if (BUILD_DIR / "index.html").exists():
+    app.mount("/", StaticFiles(directory=BUILD_DIR, html=True), name="frontend")
+else:
+    @app.get("/")
+    def root():
+        return {"message": "Frontend not built; run `npm run build` to serve the site from here."}

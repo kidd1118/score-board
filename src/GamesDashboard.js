@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { readJson } from './readJson';
 import DateStrip from './DateStrip';
 
 const REFRESH_MS = 30000;
@@ -130,8 +131,7 @@ export default function GamesDashboard({ date = null, onDateChange }) {
     setLoading(true);
     try {
       const res = await fetch(date ? `/games/?date=${date}` : '/games/');
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.detail || res.statusText);
+      const body = await readJson(res);
       if (id !== requestId.current) return; // a newer date was requested meanwhile
       setData(body);
       setError(null);
