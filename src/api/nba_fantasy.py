@@ -16,21 +16,22 @@ Several people can play. Each registers a nickname and gets a secret token
 see the leaderboards and other lineups, but a pick stays hidden from others
 until that player's game starts, so lineups can't be copied.
 
-Data is stored in a JSON file.
+Data is stored in SQLite (see store.py).
 """
+import datetime as dt
 import json
-import os
+import re
 import secrets
-import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from nba_api.live.nba.endpoints import boxscore
-from nba_api.stats.endpoints import boxscoretraditionalv3, leaguedashplayerstats, playerindex
+from nba_api.stats.endpoints import boxscoretraditionalv3, leaguedashplayerstats, playergamelogs, playerindex
 
 import nba_games
 import nba_injuries
+import store
 from cache import ERROR_BACKOFF, cached, with_retry
 from names import name_key
 
@@ -68,12 +69,10 @@ PLAYERS_TTL = 6 * 60 * 60
 LIVE_BOX_TTL = 30  # matches the page's refresh, so each refresh asks NBA at most once
 FINAL_BOX_TTL = 6 * 60 * 60
 TOP_PLAYERS = 10
+RECENT_GAMES = 5
+GAME_LOG_TTL = 60 * 60
 
 NAME_MAX = 20
-LEGACY_NAME = "玩家1"  # owner of lineups saved before the game was multiplayer
-
-DATA_FILE = Path(os.environ.get("FANTASY_DATA_FILE", Path(__file__).parent / "data" / "fantasy.json"))
-_store_lock = threading.Lock()
 
 
 class LineupError(ValueError):
@@ -82,6 +81,10 @@ class LineupError(ValueError):
 
 class NameTaken(LineupError):
     """Someone already registered that name."""
+
+
+class GameNotFound(LookupError):
+    """No game with that id on that date."""
 
 
 # ---------- scoring ----------
@@ -110,43 +113,18 @@ def eligible_slots(position):
 
 # ---------- storage ----------
 #
+# store.load() returns everything in this shape:
 # {
 #   "users":   {key: {"name": display name, "token": secret | null}},
-#   "lineups": {date: {key: {"slots": {...}, "finalTotal": n | null}}}
+#   "lineups": {date: {key: {"slots": {...}, "finalTotal": n | null, "scoringVersion", "pickPoints"}}}
 # }
 # `key` is the case-folded name, so "Leo" and "leo" are the same player.
 
-def _empty():
-    return {"users": {}, "lineups": {}}
-
-
-def _load():
-    if not DATA_FILE.exists():
-        return _empty()
-    data = json.loads(DATA_FILE.read_text())
-    if "lineups" not in data:
-        # Single-player format ({date: lineup}): hand those lineups to an unclaimed
-        # player; the first person to register that name takes it over.
-        key = user_key(LEGACY_NAME)
-        migrated = _empty()
-        if data:
-            migrated["users"][key] = {"name": LEGACY_NAME, "token": None}
-            migrated["lineups"] = {date: {key: entry} for date, entry in data.items()}
-        return migrated
-    return data
-
-
-def _save(data):
-    DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
-    tmp = DATA_FILE.with_suffix(".tmp")
-    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2))
-    tmp.replace(DATA_FILE)
+_load = store.load
+user_key = store.user_key
 
 
 # ---------- players (people playing the game) ----------
-
-def user_key(name):
-    return " ".join(name.split()).casefold()
 
 
 def _clean_name(name):
@@ -166,35 +144,30 @@ def register(name):
     name = _clean_name(name)
     key = user_key(name)
     token = secrets.token_urlsafe(18)
-    with _store_lock:
-        data = _load()
-        existing = data["users"].get(key)
+    with store.writing() as conn:
+        existing = store.get_user(conn, key)
         if existing and existing.get("token"):
             raise NameTaken(f"「{existing['name']}」已經有人使用")
-        data["users"][key] = {"name": existing["name"] if existing else name, "token": token}
-        _save(data)
-    return {"name": data["users"][key]["name"], "token": token}
+        # An unclaimed player (lineups saved before multiplayer) keeps its name.
+        name = existing["name"] if existing else name
+        store.put_user(conn, key, name, token)
+    return {"name": name, "token": token}
 
 
 def rename(key, new_name):
     """Change a player's nickname, keeping their token and every saved lineup. Returns {name}."""
     new_name = _clean_name(new_name)
     new_key = user_key(new_name)
-    with _store_lock:
-        data = _load()
-        user = data["users"].get(key)
-        if user is None:
+    with store.writing() as conn:
+        if store.get_user(conn, key) is None:
             raise LineupError("找不到這位玩家")
         # Changing only capitalization or spacing keeps the same key.
         if new_key != key:
-            if new_key in data["users"]:
-                raise NameTaken(f"「{data['users'][new_key]['name']}」已經有人使用")
-            data["users"][new_key] = data["users"].pop(key)
-            for entries in data["lineups"].values():
-                if key in entries:
-                    entries[new_key] = entries.pop(key)
-        data["users"][new_key]["name"] = new_name
-        _save(data)
+            taken = store.get_user(conn, new_key)
+            if taken:
+                raise NameTaken(f"「{taken['name']}」已經有人使用")
+        # The lineups follow the new key through the foreign key.
+        store.rename_user(conn, key, new_key, new_name)
     return {"name": new_name}
 
 
@@ -202,8 +175,7 @@ def user_for_token(token):
     """The player key a token belongs to, or None."""
     if not token:
         return None
-    with _store_lock:
-        users = _load()["users"]
+    users = _load()["users"]
     for key, user in users.items():
         if user.get("token") and secrets.compare_digest(user["token"], token):
             return key
@@ -213,8 +185,8 @@ def user_for_token(token):
 def find_user(name):
     """(key, display name) for a player name, or None."""
     key = user_key(name)
-    with _store_lock:
-        user = _load()["users"].get(key)
+    with store.reading() as conn:
+        user = store.get_user(conn, key)
     return (key, user["name"]) if user else None
 
 
@@ -288,8 +260,46 @@ def _fetch_players():
     return players
 
 
-def _players():
-    return cached("fantasy-players", lambda _: PLAYERS_TTL, _fetch_players)
+def _players(force=False):
+    return cached("fantasy-players", lambda _: PLAYERS_TTL, _fetch_players, force)
+
+
+def _season_for(date):
+    """'2026-11-24' -> '2026-27'. A season starts in October and ends by June."""
+    year, month = int(date[:4]), int(date[5:7])
+    start = year if month >= 7 else year - 1
+    return f"{start}-{(start + 1) % 100:02d}"
+
+
+def _fetch_game_logs(season):
+    """{player id: [(date, fantasy points), ...] oldest first} for every regular-season game."""
+    rows = playergamelogs.PlayerGameLogs(
+        season_nullable=season, season_type_nullable="Regular Season", timeout=REQUEST_TIMEOUT
+    ).get_normalized_dict()["PlayerGameLogs"]
+    logs = {}
+    for r in rows:
+        g = lambda k: r.get(k) or 0
+        points = fantasy_points(scoring_stats(
+            g("FGM"), g("FGA"), g("FG3M"), g("FTM"), g("FTA"),
+            reb=g("REB"), ast=g("AST"), stl=g("STL"), blk=g("BLK"), tov=g("TOV"), pf=g("PF"),
+        ))
+        logs.setdefault(r["PLAYER_ID"], []).append((r["GAME_DATE"][:10], points))
+    for games in logs.values():
+        games.sort()
+    return logs
+
+
+def _game_logs(date, force=False):
+    season = _season_for(date)
+    return cached(("game-logs", season), lambda _: GAME_LOG_TTL, lambda: _fetch_game_logs(season), force)
+
+
+def _recent(logs, player_id, date):
+    """The player's last RECENT_GAMES games before `date`: {"games": [points, ...] oldest first, "avg"}."""
+    games = [points for day, points in logs.get(player_id, []) if day < date][-RECENT_GAMES:]
+    if not games:
+        return None
+    return {"games": games, "avg": round(sum(games) / len(games), 1)}
 
 
 def _pick_salary(pick):
@@ -304,6 +314,14 @@ def _money(amount):
     return f"${amount:,}"
 
 
+def _minutes(value):
+    """'PT25M30.00S' (live) or '25:30' (stats) -> '25:30'."""
+    m = re.match(r"PT(\d+)M(\d+)", value or "")
+    if m:
+        return f"{int(m.group(1))}:{m.group(2)}"
+    return value or ""
+
+
 def _box_players(teams, played):
     """Stats and names from either box score source; both use the same field names."""
     stats = {}
@@ -315,9 +333,17 @@ def _box_players(teams, played):
                 "name": p.get("name") or f"{p.get('firstName', '')} {p.get('familyName', '')}".strip(),
                 "team": team.get("teamTricode"),
                 "position": p.get("position") or "",
+                # The live feed flags starters; the stats feed only gives starters a position.
+                "starter": p.get("starter") == "1" if "starter" in p else bool(p.get("position")),
             }
             stats[p["personId"]] = {
                 "played": played(p),
+                "min": _minutes(s.get("minutes")),
+                "fgm": s.get("fieldGoalsMade", 0),
+                "fga": s.get("fieldGoalsAttempted", 0),
+                "fg3a": s.get("threePointersAttempted", 0),
+                "fta": s.get("freeThrowsAttempted", 0),
+                "pm": int(s.get("plusMinusPoints") or 0),
                 **scoring_stats(
                     s.get("fieldGoalsMade", 0), s.get("fieldGoalsAttempted", 0),
                     s.get("threePointersMade", 0),
@@ -361,11 +387,16 @@ def _fetch_box(game):
     return _fetch_stats_box(game["id"], game["status"])
 
 
-def _box(game):
+def _box_key(game):
+    return ("box", game["id"])
+
+
+def _box(game, force=False):
     return cached(
-        ("box", game["id"]),
+        _box_key(game),
         lambda box: FINAL_BOX_TTL if box["status"] == FINAL else LIVE_BOX_TTL,
         lambda: _fetch_box(game),
+        force,
     )
 
 
@@ -399,6 +430,10 @@ def get_pool(date):
     by_team = _games_by_team(date)
     upcoming = any(g["status"] == SCHEDULED for g in by_team.values())
     injuries = nba_injuries.statuses_for(date) if upcoming else None
+    try:
+        logs = _game_logs(date)
+    except Exception:
+        logs = {}  # recent form is a nice-to-have; the pool works without it
     pool = []
     for p in _players():
         game = by_team.get(p["teamId"])
@@ -412,6 +447,7 @@ def get_pool(date):
             "locked": locked,
             # Availability only matters before tip-off.
             "injury": injuries.get(p["name"], p["team"]) if injuries and not locked else None,
+            "recent": _recent(logs, p["id"], date),
         })
     pool.sort(key=lambda p: p["avgPoints"], reverse=True)
     return {
@@ -452,9 +488,9 @@ def _slot_view(slot, pick, games_by_id, reveal, injuries):
 
 def get_lineup(date, key, reveal=True):
     """One player's lineup for `date`. With reveal=False, picks whose game hasn't started are hidden."""
-    with _store_lock:
-        data = _load()
-    entry = data["lineups"].get(date, {}).get(key, {})
+    with store.reading() as conn:
+        entry = store.get_entry(conn, date, key) or {}
+        user = store.get_user(conn, key) or {}
     picks = entry.get("slots", {})
     games_by_id = {g["id"]: g for g in nba_games.get_games(date)["games"]} if picks else {}
     # Only look up injuries when a visible pick hasn't tipped off yet.
@@ -468,16 +504,14 @@ def get_lineup(date, key, reveal=True):
 
     picked_games = [games_by_id.get(p["gameId"]) for p in picks.values()]
     final = bool(picked_games) and all(g and g["status"] == FINAL for g in picked_games)
-    if final and (entry.get("finalTotal") != total or entry.get("scoringVersion") != SCORING_VERSION):
-        with _store_lock:
-            data = _load()
-            stored = data["lineups"].get(date, {}).get(key)
-            if stored:
-                stored["finalTotal"] = total
-                stored["scoringVersion"] = SCORING_VERSION
-                _save(data)
+    pick_points = {s["slot"]: s["points"] for s in slots if s["player"]}
+    if final and (
+        entry.get("finalTotal") != total
+        or entry.get("scoringVersion") != SCORING_VERSION
+        or entry.get("pickPoints") != pick_points
+    ):
+        store.settle(date, key, total, SCORING_VERSION, pick_points)
 
-    user = data["users"].get(key, {})
     return {
         "date": date,
         "player": user.get("name", key),
@@ -502,10 +536,8 @@ def save_lineup(date, key, picks):
     by_team = _games_by_team(date)
     pool = {p["id"]: p for p in get_pool(date)["players"]}
 
-    with _store_lock:
-        data = _load()
-        day = data["lineups"].setdefault(date, {})
-        current = day.get(key, {}).get("slots", {})
+    with store.writing() as conn:
+        current = (store.get_entry(conn, date, key) or {}).get("slots", {})
         new_slots = {}
         for slot in SLOTS:
             new_id = picks.get(slot)
@@ -541,13 +573,113 @@ def save_lineup(date, key, picks):
         if new_salary > SALARY_CAP and new_salary > old_salary:
             raise LineupError(f"薪資總額 {_money(new_salary)} 超過上限 {_money(SALARY_CAP)}")
         if new_slots:
-            day[key] = {"slots": new_slots, "finalTotal": None}
+            store.put_lineup(conn, date, key, new_slots)
         else:
-            day.pop(key, None)
-        if not day:
-            data["lineups"].pop(date, None)
-        _save(data)
+            store.delete_lineup(conn, date, key)
     return get_lineup(date, key)
+
+
+# ---------- best lineup ----------
+
+# Players with these statuses are left out of the best lineup.
+AUTO_SKIP_INJURIES = {"OUT", "OFS"}
+
+
+def _prune(candidates, slot_count):
+    """Drop players who can never be in a best lineup.
+
+    If `slot_count` other players fit every slot this one fits, cost no more and
+    score at least as much, one of them is always free to take this one's place.
+    """
+    kept = []
+    for p in candidates:
+        better = 0
+        for q in candidates:
+            if q is p or not q["fits"] >= p["fits"]:
+                continue
+            if q["salary"] <= p["salary"] and q["score"] >= p["score"]:
+                # Exact twins: only the one with the lower id counts as better.
+                if q["salary"] == p["salary"] and q["score"] == p["score"] and q["id"] > p["id"]:
+                    continue
+                better += 1
+                if better >= slot_count:
+                    break
+        if better < slot_count:
+            kept.append(p)
+    return kept
+
+
+def _optimize(candidates, slots, budget):
+    """The best {slot: candidate} within `budget`, filling as many of `slots` as possible.
+
+    Each candidate has "id", "salary", "score" and "fits" (the slots it may play).
+    Dynamic programming over which slots are filled; for each, only the
+    salary/score trade-offs that aren't beaten (Pareto front) are kept.
+    """
+    index = {slot: i for i, slot in enumerate(slots)}
+    pool = _prune([c for c in candidates if c["fits"] & set(slots)], len(slots))
+    pool.sort(key=lambda c: -c["score"])
+    # mask of filled slots -> [(salary, score, ((slot, candidate), ...))]
+    fronts = {0: [(0, 0, ())]}
+    for c in pool:
+        bits = [(slot, 1 << index[slot]) for slot in c["fits"] if slot in index]
+        updates = {}
+        for mask, front in fronts.items():
+            for slot, bit in bits:
+                if mask & bit:
+                    continue
+                for salary, score, picks in front:
+                    if salary + c["salary"] <= budget:
+                        updates.setdefault(mask | bit, []).append(
+                            (salary + c["salary"], score + c["score"], picks + ((slot, c),))
+                        )
+        for mask, options in updates.items():
+            merged = sorted(fronts.get(mask, []) + options, key=lambda o: (o[0], -o[1]))
+            front, best = [], float("-inf")
+            for option in merged:
+                if option[1] > best:
+                    front.append(option)
+                    best = option[1]
+            fronts[mask] = front
+    mask, front = max(fronts.items(), key=lambda kv: (bin(kv[0]).count("1"), kv[1][-1][1]))
+    salary, score, picks = front[-1]
+    return dict(picks), round(score, 1)
+
+
+def best_lineup(date, key):
+    """Fill every slot whose game hasn't started with the best players by season average.
+
+    Locked picks stay. Players listed Out are skipped. Saves and returns the lineup
+    with "projected", the expected total by season averages.
+    """
+    pool = get_pool(date)["players"]
+    with store.reading() as conn:
+        current = (store.get_entry(conn, date, key) or {}).get("slots", {})
+    games_by_id = {g["id"]: g for g in nba_games.get_games(date)["games"]}
+    locked = {
+        slot: pick for slot, pick in current.items()
+        if games_by_id.get(pick["gameId"], {}).get("status", SCHEDULED) != SCHEDULED
+    }
+    open_slots = [slot for slot in SLOTS if slot not in locked]
+    if not open_slots:
+        raise LineupError("所有位置都已鎖定，不能再更換")
+    taken = {pick["id"] for pick in locked.values()}
+    candidates = [
+        {"id": p["id"], "salary": p["salary"], "score": p["avgPoints"], "fits": set(p["slots"])}
+        for p in pool
+        if not p["locked"] and p["id"] not in taken and p["avgPoints"] > 0
+        and (p.get("injury") or {}).get("status") not in AUTO_SKIP_INJURIES
+    ]
+    if not candidates:
+        raise LineupError("這天已經沒有還沒開賽的球員可以選")
+    budget = SALARY_CAP - sum(_pick_salary(p) for p in locked.values())
+    chosen, projected = _optimize(candidates, open_slots, budget)
+    picks = {slot: pick["id"] for slot, pick in locked.items()}
+    picks.update({slot: c["id"] for slot, c in chosen.items()})
+    lineup = save_lineup(date, key, picks)
+    by_id = {p["id"]: p for p in pool}
+    projected += sum(by_id[p["id"]]["avgPoints"] for p in locked.values() if p["id"] in by_id)
+    return {**lineup, "projected": round(projected, 1)}
 
 
 def _rank(rows, score):
@@ -560,11 +692,20 @@ def _rank(rows, score):
     return rows
 
 
+def _settled(entry):
+    """A lineup settled under the current rules (older ones are recomputed once)."""
+    return (
+        entry.get("finalTotal") is not None
+        and entry.get("scoringVersion") == SCORING_VERSION
+        and "pickPoints" in entry
+    )
+
+
 def _day_results(date, entries):
     """{key: (total, final, players)} for every lineup on `date`, settling any that just finished."""
     results = {}
     for key, entry in entries.items():
-        if entry.get("finalTotal") is not None and entry.get("scoringVersion") == SCORING_VERSION:
+        if _settled(entry):
             results[key] = (entry["finalTotal"], True, len(entry.get("slots", {})))
         else:
             lineup = get_lineup(date, key)
@@ -573,8 +714,7 @@ def _day_results(date, entries):
 
 
 def get_daily_leaderboard(date):
-    with _store_lock:
-        data = _load()
+    data = _load()
     results = _day_results(date, data["lineups"].get(date, {}))
     rows = [
         {"player": data["users"].get(key, {}).get("name", key), "total": total, "final": final, "players": players}
@@ -584,13 +724,75 @@ def get_daily_leaderboard(date):
     return {"date": date, "entries": _rank(rows, lambda r: r["total"])}
 
 
-def get_leaderboard():
-    """Season standings over settled days: total points, days played, average, best day, daily wins."""
-    with _store_lock:
-        data = _load()
-    stats = {}
+PERIODS = ("week", "month")
+
+BADGES = [
+    {"id": "champion", "icon": "👑", "name": "單日冠軍", "description": "拿過單日第一（當天至少兩人參加）"},
+    {"id": "club300", "icon": "💯", "name": "300 分俱樂部", "description": "單日總積分達到 300 分"},
+    {"id": "sniper", "icon": "🎯", "name": "神準", "description": "選中單場 70 分以上的球員"},
+    {"id": "streak", "icon": "🔥", "name": "連續 7 天", "description": "連續 7 個比賽日都有組陣容"},
+    {"id": "veteran", "icon": "📅", "name": "老玩家", "description": "參加滿 10 天"},
+]
+CLUB_TOTAL = 300
+SNIPER_POINTS = 70
+STREAK_DAYS = 7
+VETERAN_DAYS = 10
+
+
+def _period_range(period, date):
+    """(first, last) ISO dates of the Monday-Sunday week or the month containing `date`."""
+    day = dt.date.fromisoformat(date)
+    if period == "week":
+        first = day - dt.timedelta(days=day.weekday())
+        last = first + dt.timedelta(days=6)
+    else:
+        first = day.replace(day=1)
+        last = (first + dt.timedelta(days=32)).replace(day=1) - dt.timedelta(days=1)
+    return first.isoformat(), last.isoformat()
+
+
+def _longest_streak(days, calendar):
+    """Longest run of consecutive entries of `calendar` (sorted game days) found in `days`."""
+    best = run = 0
+    for day in calendar:
+        run = run + 1 if day in days else 0
+        best = max(best, run)
+    return best
+
+
+def _badges(data, stats):
+    """{key: [badge id, ...]} earned over every day, whatever period is shown."""
+    calendar = sorted(data["lineups"])
+    played = {}
+    sniper = set()
     for date, entries in data["lineups"].items():
-        results = _day_results(date, entries)
+        for key, entry in entries.items():
+            played.setdefault(key, set()).add(date)
+            if any(points >= SNIPER_POINTS for points in (entry.get("pickPoints") or {}).values()):
+                sniper.add(key)
+    earned = {}
+    for key, days in played.items():
+        s = stats.get(key, {})
+        ids = []
+        if s.get("wins"):
+            ids.append("champion")
+        if (s.get("best") or 0) >= CLUB_TOTAL:
+            ids.append("club300")
+        if key in sniper:
+            ids.append("sniper")
+        if _longest_streak(days, calendar) >= STREAK_DAYS:
+            ids.append("streak")
+        if len(days) >= VETERAN_DAYS:
+            ids.append("veteran")
+        earned[key] = ids
+    return earned
+
+
+def _standings(data, dates):
+    """{key: {"days", "total", "best", "wins"}} over the settled lineups of `dates`."""
+    stats = {}
+    for date in dates:
+        results = _day_results(date, data["lineups"][date])
         settled = {key: total for key, (total, final, _) in results.items() if final}
         everyone_settled = len(settled) == len(results)
         best = max(settled.values()) if settled else None
@@ -601,16 +803,120 @@ def get_leaderboard():
             s["best"] = total if s["best"] is None else max(s["best"], total)
             if everyone_settled and len(settled) > 1 and total == best:
                 s["wins"] += 1
+    return stats
+
+
+def get_leaderboard(period=None, date=None):
+    """Standings over settled days: total points, days played, average, best day, daily wins.
+
+    `period` "week" or "month" limits it to the week (Monday-Sunday) or month of
+    `date`; otherwise every day counts. Badges always count every day.
+    """
+    data = _load()
+    everything = _standings(data, sorted(data["lineups"]))
+    if period:
+        first, last = _period_range(period, date)
+        stats = _standings(data, [d for d in sorted(data["lineups"]) if first <= d <= last])
+    else:
+        first = last = None
+        stats = everything
+    # Working out the standings may have just settled days; read their pick points too.
+    data = _load()
+    badges = _badges(data, everything)
     rows = [
         {
             "player": data["users"].get(key, {}).get("name", key),
             **s,
             "average": round(s["total"] / s["days"], 1),
+            "badges": badges.get(key, []),
         }
         for key, s in stats.items()
     ]
     rows.sort(key=lambda r: (-r["total"], -r["average"], r["player"].casefold()))
-    return {"entries": _rank(rows, lambda r: r["total"])}
+    return {
+        "period": period,
+        "from": first,
+        "to": last,
+        "entries": _rank(rows, lambda r: r["total"]),
+        "badges": BADGES,
+    }
+
+
+def _started_boxes(date):
+    """(all games, games that have tipped off, their box scores)."""
+    games = nba_games.get_games(date)["games"]
+    started = [g for g in games if g["status"] != SCHEDULED]
+    # The first box alone, so a blocked CDN is noticed once rather than by every thread.
+    boxes = [_box(g) for g in started[:1]]
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        boxes += pool.map(_box, started[1:])
+    return games, started, boxes
+
+
+def _picked_by(date):
+    """{player id: [nicknames]} for `date`. Only show it for players whose game has started."""
+    data = _load()
+    picked_by = {}
+    for key, entry in data["lineups"].get(date, {}).items():
+        name = data["users"].get(key, {}).get("name", key)
+        for pick in entry.get("slots", {}).values():
+            picked_by.setdefault(pick["id"], []).append(name)
+    return {pid: sorted(names, key=str.casefold) for pid, names in picked_by.items()}
+
+
+def get_game_leaders(date):
+    """Each started game's best fantasy scorer per team, for the game cards."""
+    _, started, boxes = _started_boxes(date)
+    leaders = {}
+    for game, box in zip(started, boxes):
+        sides = {}
+        for side in ("away", "home"):
+            tricode = game[side].get("tricode")
+            rows = [
+                {"id": pid, "name": box["people"].get(pid, {}).get("name", str(pid)),
+                 "points": fantasy_points(stats), "stats": stats}
+                for pid, stats in box["players"].items()
+                if stats["played"] and box["people"].get(pid, {}).get("team") == tricode
+            ]
+            sides[side] = max(rows, key=lambda r: r["points"], default=None)
+        leaders[game["id"]] = sides
+    return {"date": date, "games": leaders}
+
+
+def get_game_detail(date, game_id):
+    """One game's box score with every player's fantasy points and who picked them."""
+    game = next((g for g in nba_games.get_games(date)["games"] if g["id"] == game_id), None)
+    if game is None:
+        raise GameNotFound(game_id)
+    teams = {}
+    if game["status"] == SCHEDULED:
+        for side in ("away", "home"):
+            teams[side] = {"tricode": game[side].get("tricode"), "players": [], "bench": []}
+        return {"date": date, "game": game, "teams": teams}
+    box = _box(game)
+    # The game has tipped off, so its picks are locked and public.
+    picked_by = _picked_by(date)
+    for side in ("away", "home"):
+        tricode = game[side].get("tricode")
+        players, bench = [], []
+        for pid, stats in box["players"].items():
+            person = box["people"].get(pid, {})
+            if person.get("team") != tricode:
+                continue
+            if not stats["played"]:
+                bench.append(person.get("name", str(pid)))
+                continue
+            players.append({
+                "id": pid,
+                "name": person.get("name", str(pid)),
+                "position": person.get("position", ""),
+                "starter": person.get("starter", False),
+                "stats": stats,
+                "points": fantasy_points(stats),
+                "pickedBy": picked_by.get(pid, []),
+            })
+        teams[side] = {"tricode": tricode, "players": players, "bench": bench}
+    return {"date": date, "game": game, "teams": teams}
 
 
 def get_top_players(date, limit=TOP_PLAYERS):
@@ -619,20 +925,8 @@ def get_top_players(date, limit=TOP_PLAYERS):
     Ties at the cut-off are all kept. Only games that have tipped off count, so
     showing who picked each player never reveals a hidden pick.
     """
-    games = nba_games.get_games(date)["games"]
-    started = [g for g in games if g["status"] != SCHEDULED]
-    # The first box alone, so a blocked CDN is noticed once rather than by every thread.
-    boxes = [_box(g) for g in started[:1]]
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        boxes += pool.map(_box, started[1:])
-
-    with _store_lock:
-        data = _load()
-    picked_by = {}
-    for key, entry in data["lineups"].get(date, {}).items():
-        name = data["users"].get(key, {}).get("name", key)
-        for pick in entry.get("slots", {}).values():
-            picked_by.setdefault(pick["id"], []).append(name)
+    games, started, boxes = _started_boxes(date)
+    picked_by = _picked_by(date)
 
     rows = []
     for game, box in zip(started, boxes):
@@ -651,7 +945,7 @@ def get_top_players(date, limit=TOP_PLAYERS):
                 )),
                 "stats": stats,
                 "points": fantasy_points(stats),
-                "pickedBy": sorted(picked_by.get(pid, []), key=str.casefold),
+                "pickedBy": picked_by.get(pid, []),
             })
     rows.sort(key=lambda r: (-r["points"], r["name"].casefold()))
     ranked = _rank(rows, lambda r: r["points"])
@@ -666,8 +960,7 @@ def get_top_players(date, limit=TOP_PLAYERS):
 
 def get_history(key):
     """Every date `key` has a lineup, newest first, with total and daily rank."""
-    with _store_lock:
-        dates = sorted((d for d, entries in _load()["lineups"].items() if key in entries), reverse=True)
+    dates = sorted((d for d, entries in _load()["lineups"].items() if key in entries), reverse=True)
     name = find_user_name(key)
     history = []
     for date in dates:
@@ -679,5 +972,6 @@ def get_history(key):
 
 
 def find_user_name(key):
-    with _store_lock:
-        return _load()["users"].get(key, {}).get("name", key)
+    with store.reading() as conn:
+        user = store.get_user(conn, key)
+    return user["name"] if user else key

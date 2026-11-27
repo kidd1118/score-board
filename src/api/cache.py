@@ -27,11 +27,15 @@ def describe(error):
     return f"NBA 資料取得失敗：{error}"
 
 
-def cached(key, ttl_for, fetch):
-    """Return the cached value for `key`, or call `fetch()` and keep it for `ttl_for(value)` seconds."""
+def cached(key, ttl_for, fetch, force=False):
+    """Return the cached value for `key`, or call `fetch()` and keep it for `ttl_for(value)` seconds.
+
+    `force` fetches even when the cached value is still fresh (the background
+    prefetcher uses it), but still respects the backoff after a failure.
+    """
     now = time.monotonic()
     hit = _cache.get(key)
-    if hit and hit[0] > now:
+    if hit and hit[0] > now and not force:
         return hit[1]
     failure = _failures.get(key)
     if failure and failure[0] > now:
@@ -49,6 +53,12 @@ def cached(key, ttl_for, fetch):
     _failures.pop(key, None)
     _cache[key] = (time.monotonic() + ttl_for(value), value)
     return value
+
+
+def is_cached(key):
+    """True when `key` holds a value that hasn't expired."""
+    hit = _cache.get(key)
+    return bool(hit) and hit[0] > time.monotonic()
 
 
 def with_retry(fetch, attempts=2):

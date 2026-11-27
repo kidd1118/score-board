@@ -1,5 +1,7 @@
 import datetime as dt
+import logging
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Header, HTTPException
@@ -11,13 +13,29 @@ import nba_teams
 import nba_players
 import nba_games
 import nba_fantasy
+import prefetch
 from cache import describe
 
-app = FastAPI()
+logging.basicConfig(level=logging.INFO)
+
+
+@asynccontextmanager
+async def lifespan(app):
+    prefetch.start()  # background NBA refresh; NBA_PREFETCH=0 turns it off
+    yield
+    prefetch.stop()
+
+
+app = FastAPI(lifespan=lifespan)
 
 # `npm run build` output. When it exists the backend also serves the site itself,
 # so the whole app runs on one port (see scripts/serve.sh).
 BUILD_DIR = Path(os.environ.get("FRONTEND_BUILD_DIR", Path(__file__).resolve().parents[2] / "build"))
+
+@app.get("/status")
+def get_status():
+    """Background NBA refresh state, for checking the server is healthy."""
+    return {"prefetch": prefetch.status()}
 
 @app.get("/items/{item_id}")
 def read_item(item_id: int, q: Union[str, None] = None):
@@ -88,6 +106,13 @@ def get_games(date: Union[str, None] = None):
         raise HTTPException(status_code=502, detail=describe(e))
 
 
+# One game's box score with fantasy points; declared after /games/ on purpose.
+@app.get("/games/{date}/{game_id}")
+def get_game_detail(date: str, game_id: str):
+    date = _check_date(date)
+    return _nba(lambda: nba_fantasy.get_game_detail(date, game_id))
+
+
 def _check_date(date: str) -> str:
     try:
         return dt.date.fromisoformat(date).isoformat()
@@ -108,6 +133,8 @@ def _nba(fetch):
     """Run an NBA-backed call; rule violations become 400, NBA failures 502."""
     try:
         return fetch()
+    except nba_fantasy.GameNotFound:
+        raise HTTPException(status_code=404, detail="找不到這場比賽")
     except nba_fantasy.NameTaken as e:
         raise HTTPException(status_code=409, detail=str(e))
     except nba_fantasy.LineupError as e:
@@ -149,9 +176,14 @@ def rename_fantasy_me(user: UserIn, x_fantasy_token: Optional[str] = Header(None
 def get_fantasy_salary():
     return nba_fantasy.salary_info()
 
+# period: "week" (Monday-Sunday) or "month" around `date`; omit for every day
 @app.get("/fantasy/leaderboard")
-def get_fantasy_leaderboard():
-    return _nba(nba_fantasy.get_leaderboard)
+def get_fantasy_leaderboard(period: Optional[str] = None, date: Optional[str] = None):
+    if period is not None and period not in nba_fantasy.PERIODS:
+        raise HTTPException(status_code=400, detail="period must be week or month")
+    if period:
+        date = _check_date(date or dt.date.today().isoformat())
+    return _nba(lambda: nba_fantasy.get_leaderboard(period, date))
 
 @app.get("/fantasy/history/{name}")
 def get_fantasy_history(name: str):
@@ -173,6 +205,11 @@ def get_fantasy_top_players(date: str):
     date = _check_date(date)
     return _nba(lambda: nba_fantasy.get_top_players(date))
 
+@app.get("/fantasy/{date}/game-leaders")
+def get_fantasy_game_leaders(date: str):
+    date = _check_date(date)
+    return _nba(lambda: nba_fantasy.get_game_leaders(date))
+
 # Anyone can look; picks whose game hasn't started are only shown to their owner.
 @app.get("/fantasy/{date}/lineup/{name}")
 def get_fantasy_lineup(date: str, name: str, x_fantasy_token: Optional[str] = Header(None)):
@@ -180,6 +217,13 @@ def get_fantasy_lineup(date: str, name: str, x_fantasy_token: Optional[str] = He
     key = _fantasy_user(name)
     reveal = nba_fantasy.user_for_token(x_fantasy_token) == key
     return _nba(lambda: nba_fantasy.get_lineup(date, key, reveal))
+
+# Fill every open slot with the best players by season average, within the salary cap.
+@app.post("/fantasy/{date}/lineup/auto")
+def auto_fantasy_lineup(date: str, x_fantasy_token: Optional[str] = Header(None)):
+    date = _check_date(date)
+    key = _signed_in(x_fantasy_token)
+    return _nba(lambda: nba_fantasy.best_lineup(date, key))
 
 @app.put("/fantasy/{date}/lineup")
 def save_fantasy_lineup(date: str, lineup: LineupIn, x_fantasy_token: Optional[str] = Header(None)):

@@ -118,8 +118,8 @@ def _stats_team(line):
     }
 
 
-def get_live_games():
-    return cached("live", lambda _: LIVE_TTL, _fetch_live_games)
+def get_live_games(force=False):
+    return cached("live", lambda _: LIVE_TTL, _fetch_live_games, force)
 
 
 def _fetch_games_by_date(game_date: str):
@@ -151,8 +151,8 @@ def _fetch_games_by_date(game_date: str):
     return {"date": game_date, "source": "stats", "games": games}
 
 
-def get_games_by_date(game_date: str):
-    return cached(("date", game_date), _day_ttl, lambda: _fetch_games_by_date(game_date))
+def get_games_by_date(game_date: str, force=False):
+    return cached(("date", game_date), _day_ttl, lambda: _fetch_games_by_date(game_date), force)
 
 
 def _board_date():
@@ -161,12 +161,12 @@ def _board_date():
     return (datetime.now(EASTERN) - timedelta(hours=6)).date().isoformat()
 
 
-def get_games(game_date: Optional[str] = None):
+def get_games(game_date: Optional[str] = None, force=False):
     """Games for a date (YYYY-MM-DD, already validated). Uses the live feed for the live board's date."""
     try:
-        live = get_live_games()
+        live = get_live_games(force)
     except Exception:
         live = None
     if live and (not game_date or game_date == live["date"]):
         return live
-    return get_games_by_date(game_date or _board_date())
+    return get_games_by_date(game_date or _board_date(), force)

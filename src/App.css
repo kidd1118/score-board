@@ -335,6 +335,15 @@ body {
   .tabs a.brand {
     flex-basis: 100%;
   }
+
+  .tabs {
+    gap: 0;
+  }
+
+  .tabs a:not(.brand) {
+    padding: 8px 9px;
+    font-size: 0.95rem;
+  }
 }
 
 .tabs a.active {
@@ -1208,6 +1217,30 @@ body {
   vertical-align: top;
 }
 
+/* The stat line is long; let the player cell wrap so 被選 and 積分 stay on screen. */
+.top-players td:nth-child(2) {
+  white-space: normal;
+}
+
+@media (max-width: 600px) {
+  .standings {
+    padding: 4px 10px 12px;
+  }
+
+  .standings .data-table {
+    font-size: 0.8rem;
+  }
+
+  .standings .data-table th,
+  .standings .data-table td {
+    padding: 7px 4px;
+  }
+
+  .standings .data-table td:nth-child(2) {
+    white-space: normal;
+  }
+}
+
 .top-players tr.current {
   background: var(--bg);
 }
@@ -1368,4 +1401,258 @@ body {
   background: none;
   text-align: left;
   font-size: 0.85rem;
+}
+
+/* ---------- best lineup, alerts, recent form ---------- */
+.auto-fill {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 4px 0 12px;
+}
+
+.auto-fill .meta {
+  margin: 0;
+}
+
+.auto-fill button {
+  padding: 8px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auto-fill button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.notice {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--status-good);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 0.9rem;
+}
+
+.alerts {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.alert {
+  --alert-color: var(--status-warning);
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--alert-color);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 0.9rem;
+}
+
+.alert-icon {
+  margin-right: 6px;
+  color: var(--alert-color);
+}
+
+.alert-critical {
+  --alert-color: var(--status-critical);
+}
+
+.alert-serious {
+  --alert-color: var(--status-serious);
+}
+
+.alert-good,
+.alert-info {
+  --alert-color: var(--accent);
+}
+
+.recent-form {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+
+.recent-form strong {
+  color: var(--text);
+}
+
+.sparkline rect {
+  fill: var(--accent);
+  opacity: 0.75;
+}
+
+.form {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.form-hot {
+  color: var(--status-serious);
+}
+
+.form-cold {
+  color: var(--muted);
+}
+
+/* ---------- leaderboard periods and badges ---------- */
+.board-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.board-head .segmented {
+  margin: 0;
+}
+
+.overall .range {
+  margin: 4px 0 0;
+}
+
+.badges {
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+.badge-icon {
+  margin-left: 2px;
+  cursor: help;
+}
+
+.badge-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.badge-legend strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ---------- game cards: fantasy leaders and link ---------- */
+.fantasy-leaders {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.fantasy-leaders > .meta {
+  display: block;
+  margin: 0 0 2px;
+}
+
+.fantasy-leaders .leaders {
+  margin-top: 0;
+  border-top: 0;
+  padding-top: 0;
+}
+
+.live-tag {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--live);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.card-link {
+  display: block;
+  margin-top: 10px;
+  color: var(--accent);
+  font-size: 0.85rem;
+  text-align: right;
+  text-decoration: none;
+}
+
+.card-link:hover {
+  text-decoration: underline;
+}
+
+.top-players .meta a {
+  color: inherit;
+}
+
+/* ---------- game page ---------- */
+.back-link {
+  display: inline-block;
+  margin-bottom: 4px;
+  text-decoration: none;
+}
+
+.sort-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+.detail-card {
+  grid-template-columns: minmax(0, 520px);
+}
+
+.box-teams {
+  display: grid;
+  gap: 20px;
+}
+
+.box-team h3 .meta {
+  margin-left: 6px;
+  font-weight: 400;
+}
+
+.box-table tbody tr {
+  cursor: default;
+}
+
+.box-table th:first-child,
+.box-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface);
+  text-align: left;
+  white-space: normal;
+  min-width: 130px;
+}
+
+.box-table th:nth-child(2),
+.box-table td:nth-child(2) {
+  text-align: right;
+}
+
+.box-table tr.picked td {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+
+.box-table .picked-by {
+  margin: 2px 0 0;
+}
+
+.mvp {
+  margin-left: 3px;
+  color: var(--status-warning);
+}
+
+.game-detail .detail-card {
+  margin-top: 12px;
 }

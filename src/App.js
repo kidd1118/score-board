@@ -4,6 +4,7 @@ import GamesDashboard from './GamesDashboard';
 import PlayersDashboard from './PlayersDashboard';
 import TeamsDashboard from './TeamsDashboard';
 import FantasyDashboard from './FantasyDashboard';
+import GameDetail from './GameDetail';
 
 const PAGES = [
   { key: 'games', label: 'Games' },
@@ -13,10 +14,13 @@ const PAGES = [
 ];
 
 // Routes live in the URL hash so a refresh keeps the current view:
-// #/games, #/games/<date>, #/teams, #/teams/<teamId>, #/players, #/players/<playerId>,
-// #/fantasy, #/fantasy/<date>
+// #/games, #/games/<date>, #/game/<date>/<gameId>, #/teams, #/teams/<teamId>,
+// #/players, #/players/<playerId>, #/fantasy, #/fantasy/<date>
 function parseHash() {
-  const [, page, param] = window.location.hash.split('/');
+  const [, page, param, extra] = window.location.hash.split('/');
+  if (page === 'game' && /^\d{4}-\d{2}-\d{2}$/.test(param || '') && /^\w+$/.test(extra || '')) {
+    return { page: 'game', id: null, date: param, gameId: extra };
+  }
   return {
     page: PAGES.some((p) => p.key === page) ? page : 'games',
     id: param && /^\d+$/.test(param) ? Number(param) : null,
@@ -44,7 +48,11 @@ function App() {
           <span>N.Baccarat.A Dashboard</span>
         </a>
         {PAGES.map((p) => (
-          <a key={p.key} href={`#/${p.key}`} className={route.page === p.key ? 'active' : ''}>
+          <a
+            key={p.key}
+            href={`#/${p.key}`}
+            className={route.page === p.key || (route.page === 'game' && p.key === 'games') ? 'active' : ''}
+          >
             {p.label}
           </a>
         ))}
@@ -55,6 +63,7 @@ function App() {
           onDateChange={(d) => (window.location.hash = d ? `#/games/${d}` : '#/games')}
         />
       )}
+      {route.page === 'game' && <GameDetail date={route.date} gameId={route.gameId} />}
       {route.page === 'teams' && <TeamsDashboard selectedId={route.id} />}
       {route.page === 'fantasy' && (
         <FantasyDashboard

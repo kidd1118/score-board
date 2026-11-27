@@ -51,7 +51,20 @@ function Leader({ tricode, leader }) {
   );
 }
 
-function GameCard({ game }) {
+function FantasyLeader({ tricode, leader }) {
+  if (!leader) return null;
+  return (
+    <li>
+      <span className="leader-team">{tricode}</span> {leader.name}
+      <span className="leader-stats">
+        <strong>{leader.points}</strong> 分
+      </span>
+    </li>
+  );
+}
+
+/** `date` links the card to its game page; `fantasy` holds each team's best fantasy scorer. */
+export function GameCard({ game, date, fantasy, linked = true }) {
   const { home, away, status } = game;
   const started = status !== STATUS.SCHEDULED;
   const homeWin = status === STATUS.FINAL && home.score > away.score;
@@ -109,6 +122,25 @@ function GameCard({ game }) {
           <Leader tricode={home.tricode} leader={game.leaders.home} />
         </ul>
       )}
+
+      {started && fantasy && (fantasy.home || fantasy.away) && (
+        <div className="fantasy-leaders">
+          <span className="meta">
+            Fantasy 積分最高
+            {status === STATUS.LIVE && <span className="live-tag">即時</span>}
+          </span>
+          <ul className="leaders">
+            <FantasyLeader tricode={away.tricode} leader={fantasy.away} />
+            <FantasyLeader tricode={home.tricode} leader={fantasy.home} />
+          </ul>
+        </div>
+      )}
+
+      {linked && date && started && (
+        <a className="card-link" href={`#/game/${date}/${game.id}`}>
+          完整數據與積分 ›
+        </a>
+      )}
     </article>
   );
 }
@@ -124,6 +156,7 @@ export default function GamesDashboard({ date = null, onDateChange }) {
   const [filter, setFilter] = useState('all');
   const [updatedAt, setUpdatedAt] = useState(null);
   const [liveDate, setLiveDate] = useState(null);
+  const [fantasy, setFantasy] = useState(null);
   const requestId = useRef(0);
 
   const load = useCallback(async () => {
@@ -137,6 +170,13 @@ export default function GamesDashboard({ date = null, onDateChange }) {
       setError(null);
       setUpdatedAt(new Date());
       if (body.source === 'live') setLiveDate(body.date);
+      // Each started game's best fantasy scorers; the cards work without them.
+      if (body.games.some((g) => g.status !== STATUS.SCHEDULED)) {
+        fetch(`/fantasy/${body.date}/game-leaders`)
+          .then((r) => readJson(r))
+          .then((f) => id === requestId.current && setFantasy(f.games))
+          .catch(() => {});
+      }
     } catch (e) {
       if (id === requestId.current) setError(e.message);
     } finally {
@@ -147,6 +187,7 @@ export default function GamesDashboard({ date = null, onDateChange }) {
   useEffect(() => {
     setData(null);
     setError(null);
+    setFantasy(null);
     load();
   }, [load]);
 
@@ -232,7 +273,7 @@ export default function GamesDashboard({ date = null, onDateChange }) {
 
       <main className="games-grid">
         {games.map((g) => (
-          <GameCard key={g.id} game={g} />
+          <GameCard key={g.id} game={g} date={data.date} fantasy={fantasy?.[g.id]} />
         ))}
       </main>
     </div>

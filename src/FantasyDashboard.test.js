@@ -27,6 +27,7 @@ const pool = {
       salary: 58456566, salaryListed: true,
       injury: { status: 'QUESTIONABLE', label: 'Questionable', reason: 'Right Knee Inflammation', source: 'NBA' },
       gp: 15, avg: { pts: 26, reb: 7, ast: 6, stl: 1, blk: 1, tov: 3 }, avgPoints: 109, game, locked: false,
+      recent: { games: [120, 130, 140, 125, 135], avg: 130 },
     },
     {
       id: 2, name: 'Started Guy', team: 'LAL', position: 'G', slots: ['PG', 'SG', '6TH'],
@@ -66,8 +67,21 @@ const daily = {
     { player: 'Amy', total: 0, final: false, players: 1, rank: 1 },
   ],
 };
+const BADGES = [
+  { id: 'champion', icon: '👑', name: '單日冠軍', description: '拿過單日第一' },
+  { id: 'club300', icon: '💯', name: '300 分俱樂部', description: '單日總積分達到 300 分' },
+];
 const overall = {
-  entries: [{ player: 'Bob', days: 3, total: 540, average: 180, best: 220, wins: 2, rank: 1 }],
+  period: null,
+  entries: [{ player: 'Bob', days: 3, total: 540, average: 180, best: 220, wins: 2, rank: 1, badges: ['champion'] }],
+  badges: BADGES,
+};
+const weekly = {
+  period: 'week',
+  from: '2026-11-23',
+  to: '2026-11-29',
+  entries: [{ player: 'Amy', days: 1, total: 150, average: 150, best: 150, wins: 0, rank: 1, badges: [] }],
+  badges: BADGES,
 };
 
 const topStats = (pts) => ({ played: true, pts, fg2m: 0, fg3m: 0, ftm: 0, miss: 0, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0 });
@@ -93,6 +107,8 @@ function respond(url, options = {}) {
   if (url === '/fantasy/me') return token === TOKEN ? { name: 'Amy' } : [401, { detail: 'bad token' }];
   if (url === '/fantasy/users') return { name: JSON.parse(options.body).name, token: TOKEN };
   if (url === '/fantasy/leaderboard') return overall;
+  if (url.startsWith('/fantasy/leaderboard?')) return weekly;
+  if (url.endsWith('/lineup/auto')) return token === TOKEN ? { ...savedLineup, projected: 321.5 } : [401, { detail: 'no token' }];
   if (url === '/fantasy/salary') return { cap: CAP, season: '2026-27', unlisted: 1357763 };
   if (url.startsWith('/fantasy/history/')) return { history: [] };
   if (url.endsWith('/leaderboard')) return daily;
@@ -154,7 +170,7 @@ test('picking a PG lists only eligible, unlocked players and saves with my token
   });
   await waitFor(() => expect(screen.getAllByText('尚未選擇')).toHaveLength(5));
   expect(screen.queryByText('選擇 PG（控球後衛）')).not.toBeInTheDocument(); // picker closes after saving
-  expect(screen.getByText('Jayson Tatum')).toBeInTheDocument();
+  expect(screen.getByText('Jayson Tatum', { selector: '.slot-player' })).toBeInTheDocument();
 });
 
 test("viewing another player's lineup is read-only and hides unstarted picks", async () => {
@@ -251,4 +267,57 @@ test("lists the day's top fantasy scorers and marks my players", async () => {
   const brunson = within(board).getByText('Jalen Brunson').closest('tr');
   expect(within(brunson).queryByText('你的球員')).not.toBeInTheDocument();
   expect(within(board).getByText(/1 場還沒開賽/)).toBeInTheDocument();
+});
+
+test('the best lineup button fills the lineup with my token', async () => {
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: /一鍵最佳陣容/ }));
+
+  await waitFor(() => {
+    const call = global.fetch.mock.calls.find(([u]) => u.endsWith('/lineup/auto'));
+    expect(call[0]).toBe(`/fantasy/${DATE}/lineup/auto`);
+    expect(call[1].method).toBe('POST');
+    expect(call[1].headers['X-Fantasy-Token']).toBe(TOKEN);
+  });
+  expect(await screen.findByText(/預估 321.5 分/)).toBeInTheDocument();
+  expect(screen.getByText('Jayson Tatum', { selector: '.slot-player' })).toBeInTheDocument();
+});
+
+test('warns about injured picks and empty slots before tip-off', async () => {
+  currentLineup = {
+    ...savedLineup,
+    slots: savedLineup.slots.map((s) =>
+      s.slot === 'PG' ? { ...s, injury: { status: 'OUT', label: 'Out', reason: 'Left Calf Strain', source: 'ESPN' } } : s
+    ),
+  };
+  render(<App />);
+  const alerts = await screen.findByRole('region', { name: '開賽前提醒' });
+  expect(within(alerts).getByText(/被列為/)).toHaveTextContent('PG Jayson Tatum 被列為 Out（Left Calf Strain）');
+  // One of the day's three games hasn't started, so empty slots still matter.
+  expect(await within(alerts).findByText(/個位置沒選/)).toHaveTextContent('還有 5 個位置沒選');
+  expect(within(alerts).getByText(/下一位鎖定/)).toBeInTheDocument();
+});
+
+test('the picker shows recent form and can sort by it', async () => {
+  render(<App />);
+  fireEvent.click((await screen.findAllByRole('button', { name: '選擇球員' }))[0]);
+  expect(await screen.findByText(/近 5 場/, { selector: '.recent-form' })).toHaveTextContent('近 5 場 130 分');
+  expect(screen.getByText('▲ 手感火燙')).toBeInTheDocument(); // 130 vs a 109 average
+  expect(screen.getByText('近 5 場：無資料')).toBeInTheDocument(); // Started Guy has no logs
+  expect(screen.getByRole('option', { name: '依近 5 場積分' })).toBeInTheDocument();
+});
+
+test('the overall board switches to this week and shows badges', async () => {
+  render(<App />);
+  const board = (await screen.findByText('總排行榜')).closest('section');
+  expect(await within(board).findByRole('img', { name: '單日冠軍' })).toBeInTheDocument();
+  expect(within(board).getByText('300 分俱樂部')).toBeInTheDocument(); // legend
+
+  fireEvent.click(within(board).getByRole('button', { name: '本週' }));
+  await waitFor(() =>
+    expect(global.fetch).toHaveBeenCalledWith(`/fantasy/leaderboard?period=week&date=${DATE}`, expect.anything())
+  );
+  expect(await screen.findByText('本週排行榜')).toBeInTheDocument();
+  expect(await screen.findByText(/11\/23 – 11\/29/)).toBeInTheDocument();
+  expect(screen.getByText('Amy', { selector: '.overall td' })).toBeInTheDocument();
 });

@@ -58,8 +58,11 @@ async function request(url, { token, headers, ...options } = {}) {
   return readJson(res);
 }
 
+const recentAvg = (p) => p.recent?.avg ?? -1;
+
 const SORTS = {
   points: { label: '平均積分', compare: (a, b) => b.avgPoints - a.avgPoints },
+  recent: { label: '近 5 場積分', compare: (a, b) => recentAvg(b) - recentAvg(a) },
   value: { label: '性價比（每百萬積分）', compare: (a, b) => valueOf(b) - valueOf(a) },
   salaryDesc: { label: '薪資高→低', compare: (a, b) => b.salary - a.salary },
   salaryAsc: { label: '薪資低→高', compare: (a, b) => a.salary - b.salary },
@@ -87,6 +90,16 @@ const INJURY_SEVERITY = {
   PROBABLE: 'good',
 };
 const UNAVAILABLE = new Set(['OUT', 'OFS']);
+// Statuses worth a warning before tip-off.
+const ALERT_STATUSES = new Set(['OUT', 'OFS', 'DOUBTFUL', 'QUESTIONABLE', 'GTD']);
+// Recent form this much above/below the season average counts as hot/cold.
+const FORM_SWING = 0.15;
+
+const PERIODS = [
+  { key: 'all', label: '全部' },
+  { key: 'month', label: '本月' },
+  { key: 'week', label: '本週' },
+];
 
 function InjuryBadge({ injury }) {
   if (!injury) return null;
@@ -131,6 +144,36 @@ function statLine(stats) {
 
 function avgLine(avg) {
   return STAT_LABELS.map(([k, label]) => `${Number(avg[k] ?? 0).toFixed(1)}${label}`).join(' ');
+}
+
+/** Tiny bar chart of the last few games, oldest first. */
+function Sparkline({ games }) {
+  const max = Math.max(...games, 1);
+  const w = 6;
+  const gap = 2;
+  const h = 18;
+  return (
+    <svg className="sparkline" width={games.length * (w + gap) - gap} height={h} aria-hidden="true">
+      {games.map((g, i) => {
+        const bh = Math.max(2, (g / max) * h);
+        return <rect key={i} x={i * (w + gap)} y={h - bh} width={w} height={bh} rx="1" />;
+      })}
+    </svg>
+  );
+}
+
+function RecentForm({ player }) {
+  const { recent, avgPoints } = player;
+  if (!recent) return <span className="meta">近 5 場：無資料</span>;
+  const trend =
+    recent.avg >= avgPoints * (1 + FORM_SWING) ? 'hot' : recent.avg <= avgPoints * (1 - FORM_SWING) ? 'cold' : null;
+  return (
+    <span className="meta recent-form" title={`近 ${recent.games.length} 場積分：${recent.games.join('、')}（舊→新）`}>
+      近 {recent.games.length} 場 <strong>{recent.avg}</strong> 分 <Sparkline games={recent.games} />
+      {trend === 'hot' && <span className="form form-hot">▲ 手感火燙</span>}
+      {trend === 'cold' && <span className="form form-cold">▼ 手感低迷</span>}
+    </span>
+  );
 }
 
 function SlotCard({ slot, active, editable, onPick, onRemove }) {
@@ -259,6 +302,7 @@ function PlayerPicker({ slot, pool, pickedIds, budget, saving, onChoose, onClose
                   <span className="meta">
                     平均 {avgLine(p.avg)} · {p.gp} 場
                   </span>
+                  <RecentForm player={p} />
                 </span>
                 <span className="pick-side">
                   <span title={`${fullMoney(p.salary)}${p.salaryListed ? '' : '（未列入合約名單，以新秀底薪計）'}`}>
@@ -283,6 +327,59 @@ function PlayerPicker({ slot, pool, pickedIds, budget, saving, onChoose, onClose
             ? '傷兵狀態：ESPN（無法取得 NBA 官方傷兵報告）'
             : '目前無法取得傷兵狀態'}
       </p>
+    </section>
+  );
+}
+
+function minutesUntil(utc, now) {
+  return Math.round((new Date(utc).getTime() - now) / 60000);
+}
+
+function untilLabel(minutes) {
+  if (minutes < 1) return '即將開賽';
+  if (minutes < 60) return `${minutes} 分鐘後開賽`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${h} 小時${m ? ` ${m} 分` : ''}後開賽`;
+}
+
+/** Warnings about my own lineup before its games tip off. `gamesLeft` is how many of the day's games haven't started. */
+function LineupAlerts({ lineup, gamesLeft, now }) {
+  const open = lineup.slots.filter((s) => s.player && !s.locked);
+  const injured = open.filter((s) => ALERT_STATUSES.has(s.injury?.status));
+  const empty = gamesLeft > 0 ? lineup.slots.filter((s) => !s.player && !s.hidden && !s.locked) : [];
+  const next = open
+    .filter((s) => s.game?.startTimeUTC)
+    .sort((a, b) => a.game.startTimeUTC.localeCompare(b.game.startTimeUTC))[0];
+  if (!injured.length && !empty.length && !next) return null;
+  return (
+    <section className="alerts" aria-label="開賽前提醒">
+      {injured.map((s) => (
+        <p key={s.slot} className={`alert alert-${INJURY_SEVERITY[s.injury.status] || 'warning'}`}>
+          <span className="alert-icon" aria-hidden="true">
+            ⚠
+          </span>
+          {s.slot} <strong>{s.player.name}</strong> 被列為 <strong>{s.injury.label}</strong>
+          {s.injury.reason && `（${s.injury.reason}）`}，開賽前記得確認或換人
+        </p>
+      ))}
+      {empty.length > 0 && (
+        <p className="alert alert-warning">
+          <span className="alert-icon" aria-hidden="true">
+            ⚠
+          </span>
+          還有 <strong>{empty.length}</strong> 個位置沒選（{empty.map((s) => s.slot).join('、')}），沒選的位置記 0 分
+        </p>
+      )}
+      {next && (
+        <p className="alert alert-info">
+          <span className="alert-icon" aria-hidden="true">
+            ⏱
+          </span>
+          下一位鎖定：{next.slot} <strong>{next.player.name}</strong>，
+          {untilLabel(minutesUntil(next.game.startTimeUTC, now))}（{formatStart(next.game.startTimeUTC)}）
+        </p>
+      )}
     </section>
   );
 }
@@ -479,14 +576,50 @@ function DailyBoard({ board, me, viewing, onView }) {
   );
 }
 
-function OverallBoard({ board, me, viewing, onView }) {
+const shortDate = (iso) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`;
+
+function Badges({ ids, defs }) {
+  if (!ids?.length || !defs) return null;
+  return (
+    <span className="badges">
+      {ids.map((id) => {
+        const badge = defs.find((b) => b.id === id);
+        return (
+          badge && (
+            <span key={id} className="badge-icon" title={`${badge.name}：${badge.description}`} aria-label={badge.name} role="img">
+              {badge.icon}
+            </span>
+          )
+        );
+      })}
+    </span>
+  );
+}
+
+function OverallBoard({ board, period, onPeriod, me, viewing, onView }) {
+  const title = PERIODS.find((p) => p.key === period)?.label;
   return (
     <section className="standings board overall">
-      <h3>總排行榜</h3>
+      <div className="board-head">
+        <h3>{period === 'all' ? '總排行榜' : `${title}排行榜`}</h3>
+        <div className="segmented" role="group" aria-label="排行範圍">
+          {PERIODS.map((p) => (
+            <button key={p.key} className={period === p.key ? 'active' : ''} aria-pressed={period === p.key} onClick={() => onPeriod(p.key)}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {board?.from && (
+        <p className="meta range">
+          {shortDate(board.from)} – {shortDate(board.to)}
+          {period === 'week' && '（週一到週日）'}，以所選日期為準
+        </p>
+      )}
       {!board ? (
         <div className="empty">載入中…</div>
       ) : board.entries.length === 0 ? (
-        <div className="empty">還沒有結算的日子</div>
+        <div className="empty">{period === 'all' ? '還沒有結算的日子' : '這段期間還沒有結算的日子'}</div>
       ) : (
         <div className="table-wrap">
           <table className="data-table games-table">
@@ -508,6 +641,7 @@ function OverallBoard({ board, me, viewing, onView }) {
                   <td>
                     {e.player}
                     {sameName(e.player, me) && <span className="meta">（你）</span>}
+                    <Badges ids={e.badges} defs={board.badges} />
                   </td>
                   <td>{e.days}</td>
                   <td>{e.wins}</td>
@@ -521,6 +655,15 @@ function OverallBoard({ board, me, viewing, onView }) {
         </div>
       )}
       <p className="meta">只計入已結算的日子，依總積分排名；單日冠軍需當天至少兩人參加 · 點選玩家查看該玩家這天的陣容</p>
+      {board?.badges && (
+        <ul className="badge-legend" aria-label="成就徽章">
+          {board.badges.map((b) => (
+            <li key={b.id}>
+              <span aria-hidden="true">{b.icon}</span> <strong>{b.name}</strong> {b.description}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
@@ -554,7 +697,7 @@ function TopPlayers({ top, me }) {
                       {mine && <span className="mine-tag">你的球員</span>}
                     </div>
                     <div className="meta">
-                      {p.team} · {gameLabel(p.game)}
+                      {p.team} · <a href={`#/game/${top.date}/${p.game.id}`}>{gameLabel(p.game)}</a>
                     </div>
                     <div className="meta">{statLine(p.stats)}</div>
                   </td>
@@ -632,6 +775,9 @@ export default function FantasyDashboard({ date = null, onDateChange }) {
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [salaryRules, setSalaryRules] = useState(null);
+  const [period, setPeriod] = useState('all');
+  const [notice, setNotice] = useState(null);
+  const [now, setNow] = useState(() => Date.now());
   const lineupRequest = useRef(0);
 
   useEffect(() => {
@@ -692,10 +838,12 @@ export default function FantasyDashboard({ date = null, onDateChange }) {
   }, [day]);
 
   const loadOverall = useCallback(() => {
-    request('/fantasy/leaderboard')
+    if (period !== 'all' && !day) return;
+    const url = period === 'all' ? '/fantasy/leaderboard' : `/fantasy/leaderboard?period=${period}&date=${day}`;
+    request(url)
       .then(setOverall)
       .catch(() => {});
-  }, []);
+  }, [period, day]);
 
   const loadHistory = useCallback(() => {
     if (!me) {
@@ -710,6 +858,7 @@ export default function FantasyDashboard({ date = null, onDateChange }) {
   useEffect(() => {
     setLineup(null);
     setActiveSlot(null);
+    setNotice(null);
     loadLineup();
   }, [loadLineup]);
 
@@ -732,6 +881,7 @@ export default function FantasyDashboard({ date = null, onDateChange }) {
   }, [top?.live, loadTop]);
 
   useEffect(() => {
+    setOverall(null);
     loadOverall();
   }, [loadOverall]);
 
@@ -751,6 +901,15 @@ export default function FantasyDashboard({ date = null, onDateChange }) {
       .then((body) => body.date === day && setPool(body))
       .catch((e) => setError(e.message));
   }, [activeSlot, pool, day]);
+
+  // Keeps the tip-off countdown in the alerts current.
+  const waiting = mine && lineup?.slots.some((s) => s.player && !s.locked);
+  useEffect(() => {
+    if (!waiting) return undefined;
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, [waiting]);
 
   const anyLive = lineup?.slots.some((s) => s.game?.status === LIVE);
   useEffect(() => {
@@ -777,6 +936,30 @@ export default function FantasyDashboard({ date = null, onDateChange }) {
       setLineup(body);
       setActiveSlot(null);
       setError(null);
+      loadDaily();
+      loadHistory();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const autoFill = async () => {
+    const replacing = lineup.slots.filter((s) => s.player && !s.locked).length;
+    if (
+      replacing &&
+      !window.confirm(`會重新安排還沒開賽的 ${replacing} 位球員（已開賽的不變），依本季平均積分在薪資上限內排出最佳陣容。確定？`)
+    )
+      return;
+    setSaving(true);
+    try {
+      const body = await request(`/fantasy/${day}/lineup/auto`, { method: 'POST', token });
+      lineupRequest.current += 1;
+      setLineup(body);
+      setActiveSlot(null);
+      setError(null);
+      setNotice(`已排出最佳陣容：依本季平均，預估 ${body.projected} 分`);
       loadDaily();
       loadHistory();
     } catch (e) {
@@ -815,6 +998,7 @@ export default function FantasyDashboard({ date = null, onDateChange }) {
   const filled = (lineup?.slots || []).filter((s) => s.player || s.hidden).length;
   const started = (lineup?.slots || []).filter((s) => s.locked).length;
   const editable = mine && lineup && !lineup.final;
+  const canAutoFill = editable && lineup.slots.some((s) => !s.locked);
   const signingIn = token && !me;
 
   return (
@@ -892,6 +1076,19 @@ export default function FantasyDashboard({ date = null, onDateChange }) {
                 {anyLive && ` · 比賽進行中，每 ${REFRESH_MS / 1000} 秒更新積分`}
               </p>
 
+              {canAutoFill && (
+                <div className="auto-fill">
+                  <button onClick={autoFill} disabled={saving}>
+                    {saving ? '處理中…' : '⚡ 一鍵最佳陣容'}
+                  </button>
+                  <span className="meta">依本季平均積分，在薪資上限內挑出總分最高的組合；已開賽的球員不變，Out 球員不列入</span>
+                </div>
+              )}
+              {notice && <p className="notice">{notice}</p>}
+              {mine && !lineup.final && (
+                <LineupAlerts lineup={lineup} gamesLeft={top ? top.games - top.started : 0} now={now} />
+              )}
+
               <div className="fantasy-layout">
                 <div className="slots-grid">
                   {lineup.slots.map((s) => (
@@ -935,7 +1132,7 @@ export default function FantasyDashboard({ date = null, onDateChange }) {
       <div className="boards">
         <DailyBoard board={daily} me={me} viewing={target} onView={view} />
         <TopPlayers top={top} me={me} />
-        <OverallBoard board={overall} me={me} viewing={target} onView={view} />
+        <OverallBoard board={overall} period={period} onPeriod={setPeriod} me={me} viewing={target} onView={view} />
       </div>
 
       <History history={history} current={day} onSelect={selectDate} />
