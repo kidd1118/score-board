@@ -296,6 +296,8 @@ body {
 /* ---------- tabs ---------- */
 .tabs {
   display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
   gap: 4px;
   max-width: 1200px;
   margin: 0 auto;
@@ -309,6 +311,30 @@ body {
   text-decoration: none;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
+}
+
+.tabs a.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: auto;
+  padding: 0 16px 8px 0;
+  color: var(--text);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  border-bottom: 0;
+  white-space: nowrap;
+}
+
+.tabs a.brand img {
+  display: block;
+}
+
+@media (max-width: 600px) {
+  .tabs a.brand {
+    flex-basis: 100%;
+  }
 }
 
 .tabs a.active {

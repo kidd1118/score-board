@@ -39,6 +39,10 @@ function App() {
   return (
     <>
       <nav className="tabs">
+        <a href="#/games" className="brand" aria-label="N.Baccarat.A Dashboard 首頁">
+          <img src={`${process.env.PUBLIC_URL}/logo.svg`} alt="" width="32" height="32" />
+          <span>N.Baccarat.A Dashboard</span>
+        </a>
         {PAGES.map((p) => (
           <a key={p.key} href={`#/${p.key}`} className={route.page === p.key ? 'active' : ''}>
             {p.label}
